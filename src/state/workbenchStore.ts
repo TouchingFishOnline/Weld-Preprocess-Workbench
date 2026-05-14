@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { createStore } from "zustand/vanilla";
 import { buildSeamFromCandidates } from "../domain/geometry";
-import { sampleManifoldCandidates } from "../domain/sampleManifold";
+import { manifestEdgesToCandidates } from "../domain/workpiece";
 import type {
   GeometryCandidate,
   LaserPoseDefinition,
@@ -10,9 +10,12 @@ import type {
   WeldStage
 } from "../domain/types";
 import type { StateCreator } from "zustand";
+import type { WorkpieceManifest } from "../domain/workpieceTypes";
 
 export interface WorkbenchState {
   targetShape: TargetShape;
+  workpiece: WorkpieceManifest | null;
+  workpieceBaseUrl: string | null;
   candidates: GeometryCandidate[];
   selectedCandidateIds: string[];
   hoverCandidateId: string | null;
@@ -22,6 +25,7 @@ export interface WorkbenchState {
   activeSeamId: string | null;
   poseDefinition: LaserPoseDefinition;
   sameDiameterSourceId: string | null;
+  loadWorkpieceManifest: (manifest: WorkpieceManifest, manifestUrl: string) => void;
   setTargetShape: (targetShape: TargetShape) => void;
   setActiveStage: (stageId: string) => void;
   setHoverCandidate: (candidateId: string | null) => void;
@@ -56,7 +60,9 @@ export function createWorkbenchStore() {
 
 const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
     targetShape: "circle",
-    candidates: sampleManifoldCandidates,
+    workpiece: null,
+    workpieceBaseUrl: null,
+    candidates: [],
     selectedCandidateIds: [],
     hoverCandidateId: null,
     stages: initialStages,
@@ -65,6 +71,19 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
     activeSeamId: null,
     poseDefinition: initialPose,
     sameDiameterSourceId: null,
+    loadWorkpieceManifest: (manifest, manifestUrl) => {
+      const baseUrl = manifestUrl.slice(0, manifestUrl.lastIndexOf("/"));
+      set({
+        workpiece: manifest,
+        workpieceBaseUrl: baseUrl,
+        candidates: manifestEdgesToCandidates(manifest.edges),
+        selectedCandidateIds: [],
+        hoverCandidateId: null,
+        seams: [],
+        activeSeamId: null,
+        sameDiameterSourceId: null
+      });
+    },
     setTargetShape: (targetShape) =>
       set({
         targetShape,

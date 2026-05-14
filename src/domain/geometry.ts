@@ -44,6 +44,10 @@ export function sampleSegmentPath(segment: WeldSeamSegment, samples = 16): Vec3[
     return segment.points;
   }
 
+  if (segment.polyline && segment.polyline.length > 0) {
+    return segment.polyline;
+  }
+
   const angleSpan = segment.endAngleRad - segment.startAngleRad;
   const count = segment.closed ? samples : Math.max(2, Math.ceil(samples * Math.abs(angleSpan) / (Math.PI * 2)));
   const denominator = segment.closed ? count : count - 1;
@@ -69,7 +73,8 @@ function candidateToSegment(candidate: GeometryCandidate): WeldSeamSegment {
       normal: candidate.normal,
       startAngleRad: candidate.startAngleRad,
       endAngleRad: candidate.endAngleRad,
-      closed: candidate.closed
+      closed: candidate.closed,
+      polyline: candidate.polyline
     };
   }
 

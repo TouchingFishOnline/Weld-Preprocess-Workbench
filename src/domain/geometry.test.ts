@@ -76,4 +76,30 @@ describe("buildSeamFromCandidates", () => {
     expect(seam.segments.map((segment) => segment.candidateId)).toEqual(["arc-a", "circle-b"]);
     expect(seam.fallbackPath.length).toBeGreaterThan(8);
   });
+
+  it("uses source polyline samples when a circular candidate provides them", () => {
+    const seam = buildSeamFromCandidates("seam-2", [
+      {
+        id: "arc-polyline",
+        shape: "circle",
+        kind: "arc",
+        label: "polyline",
+        radiusMm: 12.5,
+        center: [0, 0, 0],
+        normal: [0, 0, 1],
+        startAngleRad: 0,
+        endAngleRad: Math.PI,
+        closed: false,
+        polyline: [
+          [1, 2, 3],
+          [4, 5, 6]
+        ]
+      }
+    ]);
+
+    expect(seam.fallbackPath).toEqual([
+      [1, 2, 3],
+      [4, 5, 6]
+    ]);
+  });
 });

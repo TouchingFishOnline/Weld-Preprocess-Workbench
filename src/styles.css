@@ -28,7 +28,7 @@ button {
 .workbench-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-rows: 72px 1fr;
+  grid-template-rows: 72px auto 1fr;
   background: #dfe6ec;
 }
 
@@ -83,6 +83,40 @@ h1 {
   display: grid;
   grid-template-columns: 250px minmax(560px, 1fr) 340px;
   min-height: 0;
+}
+
+.import-strip {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  background: #eef4f8;
+  border-bottom: 1px solid rgba(64, 80, 92, 0.14);
+}
+
+.import-strip.compact {
+  padding-block: 10px;
+}
+
+.import-strip input {
+  display: none;
+}
+
+.import-strip > div {
+  display: grid;
+  gap: 3px;
+}
+
+.import-strip strong {
+  font-size: 15px;
+}
+
+.import-strip span,
+.import-strip em {
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
 }
 
 .tool-panel,
@@ -238,6 +272,40 @@ h1 {
   color: #1d4ed8;
 }
 
+.view-cube {
+  position: absolute;
+  z-index: 3;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, 52px);
+  gap: 5px;
+  padding: 7px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.45);
+}
+
+.view-cube button {
+  min-height: 30px;
+  border: 1px solid #d3dce5;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1f2937;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .stage-list,
 .seam-list,
 .pose-actions {
@@ -281,6 +349,11 @@ h1 {
 
   .workspace {
     grid-template-columns: 1fr;
+  }
+
+  .import-strip {
+    grid-template-columns: 1fr;
+    padding: 14px;
   }
 
   .tool-panel,

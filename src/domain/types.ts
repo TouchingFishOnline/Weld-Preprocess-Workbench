@@ -16,6 +16,7 @@ export type GeometryCandidate =
       startAngleRad: number;
       endAngleRad: number;
       closed: boolean;
+      polyline?: Vec3[];
     }
   | {
       id: string;
@@ -44,6 +45,7 @@ export type WeldSeamSegment =
       startAngleRad: number;
       endAngleRad: number;
       closed: boolean;
+      polyline?: Vec3[];
     }
   | {
       candidateId: string;

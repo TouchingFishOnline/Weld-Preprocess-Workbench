@@ -1,21 +1,24 @@
-import { Canvas } from "@react-three/fiber";
-import { Line, OrbitControls, Text } from "@react-three/drei";
-import { useMemo } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
+import { Line, OrbitControls, Text, useGLTF } from "@react-three/drei";
+import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
-import { filterCandidatesByTargetShape, findSameDiameterCandidates } from "../domain/geometry";
-import { manifoldDimensions } from "../domain/sampleManifold";
+import { filterCandidatesByTargetShape, findSameDiameterCandidates, sampleSegmentPath } from "../domain/geometry";
 import { sampleTorchPoses } from "../domain/pose";
 import type { GeometryCandidate, Vec3, WeldSeam } from "../domain/types";
+import { transformPoint } from "../domain/workpiece";
+import type { DisplayTransform } from "../domain/workpieceTypes";
 import { useWorkbenchStore } from "../state/workbenchStore";
 
-const SCALE = 0.01;
-const BODY_CENTER_X = manifoldDimensions.bodyLengthMm / 2;
+type ViewPreset = "iso" | "top" | "front" | "right";
 
-function toScenePoint(point: Vec3): [number, number, number] {
-  return [(point[0] - BODY_CENTER_X) * SCALE, point[1] * SCALE, point[2] * SCALE];
+function toScenePoint(point: Vec3, transform: DisplayTransform): [number, number, number] {
+  return transformPoint(point, transform);
 }
 
 export function Viewer3D() {
+  const [viewPreset, setViewPreset] = useState<ViewPreset>("iso");
+  const workpiece = useWorkbenchStore((state) => state.workpiece);
+  const workpieceBaseUrl = useWorkbenchStore((state) => state.workpieceBaseUrl);
   const candidates = useWorkbenchStore((state) => state.candidates);
   const targetShape = useWorkbenchStore((state) => state.targetShape);
   const selectedCandidateIds = useWorkbenchStore((state) => state.selectedCandidateIds);
@@ -39,81 +42,132 @@ export function Viewer3D() {
   );
   const activeSeam = seams.find((seam) => seam.id === activeSeamId) ?? null;
   const poses = activeSeam ? sampleTorchPoses(activeSeam, poseDefinition) : [];
+  const transform = workpiece?.displayTransform ?? null;
+  const modelUrl = workpiece && workpieceBaseUrl ? `${workpieceBaseUrl}/${workpiece.modelUrl}` : null;
 
   return (
     <section className="viewer-shell">
       <div className="viewer-toolbar">
         <span>3D Workpiece</span>
-        <strong>{targetShape.toUpperCase()}</strong>
+        <strong>{workpiece ? targetShape.toUpperCase() : "NO STEP"}</strong>
       </div>
-      <Canvas camera={{ position: [0, -8.5, 5.2], fov: 38 }} shadows>
+      <div className="view-cube">
+        <button type="button" onClick={() => setViewPreset("top")}>TOP</button>
+        <button type="button" onClick={() => setViewPreset("front")}>FRONT</button>
+        <button type="button" onClick={() => setViewPreset("right")}>RIGHT</button>
+        <button type="button" onClick={() => setViewPreset("iso")}>ISO</button>
+      </div>
+      <Canvas camera={{ position: [10, -15, 8], fov: 38 }} shadows>
         <color attach="background" args={["#eef2f5"]} />
         <ambientLight intensity={0.9} />
         <directionalLight position={[4, -6, 8]} intensity={1.8} castShadow />
-        <ManifoldBody />
-        {candidates.map((candidate) => (
-          <CandidateOverlay
-            key={candidate.id}
-            candidate={candidate}
-            visible={visibleCandidates.has(candidate.id)}
-            selected={selectedCandidateIds.includes(candidate.id)}
-            hovered={hoverCandidateId === candidate.id}
-            sameDiameter={sameDiameterIds.has(candidate.id)}
-          />
-        ))}
-        {seams.map((seam, index) => (
-          <SeamOverlay key={seam.id} seam={seam} index={index} active={seam.id === activeSeamId} />
-        ))}
-        {poses.map((pose, index) => (
-          <TorchGhost key={`${activeSeamId}-${index}`} pose={pose} index={index} total={poses.length} />
-        ))}
+        <ViewController preset={viewPreset} />
+        {modelUrl && transform ? <ImportedModel modelUrl={modelUrl} transform={transform} /> : <EmptyScene />}
+        {transform &&
+          candidates.map((candidate) => (
+            <CandidateOverlay
+              key={candidate.id}
+              candidate={candidate}
+              transform={transform}
+              visible={visibleCandidates.has(candidate.id)}
+              selected={selectedCandidateIds.includes(candidate.id)}
+              hovered={hoverCandidateId === candidate.id}
+              sameDiameter={sameDiameterIds.has(candidate.id)}
+            />
+          ))}
+        {transform &&
+          seams.map((seam, index) => (
+            <SeamOverlay key={seam.id} seam={seam} transform={transform} index={index} active={seam.id === activeSeamId} />
+          ))}
+        {transform &&
+          poses.map((pose, index) => (
+            <TorchGhost key={`${activeSeamId}-${index}`} pose={pose} transform={transform} index={index} total={poses.length} />
+          ))}
         <gridHelper args={[18, 18, "#cbd5df", "#dbe3ea"]} position={[0, 0, -0.42]} />
-        <OrbitControls enableDamping makeDefault maxPolarAngle={Math.PI * 0.78} minDistance={4} maxDistance={18} />
+        <OrbitControls enableDamping makeDefault maxPolarAngle={Math.PI * 0.78} minDistance={4} maxDistance={28} />
       </Canvas>
     </section>
   );
 }
 
-function ManifoldBody() {
-  const bodyLength = manifoldDimensions.bodyLengthMm * SCALE;
-  const bodyWidth = 70 * SCALE;
-  const bodyHeight = 60 * SCALE;
+function ImportedModel({ modelUrl, transform }: { modelUrl: string; transform: DisplayTransform }) {
+  const gltf = useGLTF(modelUrl);
+  const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene]);
+  const position: [number, number, number] = [
+    -transform.center[0] * transform.scale,
+    -transform.center[1] * transform.scale,
+    -transform.center[2] * transform.scale
+  ];
+
+  useEffect(() => {
+    const material = new THREE.MeshStandardMaterial({
+      color: "#8fa2ad",
+      roughness: 0.72,
+      metalness: 0.08
+    });
+    scene.traverse((object) => {
+      if ((object as THREE.Mesh).isMesh) {
+        const mesh = object as THREE.Mesh;
+        mesh.material = material;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+      }
+    });
+  }, [scene]);
 
   return (
-    <group>
-      <mesh position={[0, 0, 0]} castShadow receiveShadow>
-        <boxGeometry args={[bodyLength, bodyWidth, bodyHeight]} />
-        <meshStandardMaterial color="#9fb1bc" roughness={0.74} metalness={0.12} />
-      </mesh>
-      <mesh position={[-6.75, 0, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <cylinderGeometry args={[0.22, 0.22, 0.55, 40]} />
-        <meshStandardMaterial color="#8ea0ab" roughness={0.68} />
-      </mesh>
-      <mesh position={[7.35, 0.18, -0.08]} rotation={[0.75, 0.25, 0.35]} castShadow>
-        <cylinderGeometry args={[0.38, 0.48, 0.72, 48]} />
-        <meshStandardMaterial color="#91a4af" roughness={0.7} />
-      </mesh>
-      {Array.from({ length: 27 }, (_, index) => {
-        const x = (76.15 + index * 44.45 - BODY_CENTER_X) * SCALE;
-        return (
-          <mesh key={index} position={[x, 0, 0.45]} castShadow>
-            <cylinderGeometry args={[0.16, 0.16, 0.36, 36]} />
-            <meshStandardMaterial color="#8ea3ae" roughness={0.62} />
-          </mesh>
-        );
-      })}
+    <group scale={transform.scale} position={position}>
+      <primitive object={scene} />
     </group>
   );
 }
 
+function EmptyScene() {
+  return (
+    <group>
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[3.2, 1.2, 0.12]} />
+        <meshBasicMaterial color="#d8e1e8" transparent opacity={0.55} />
+      </mesh>
+      <Text position={[0, 0, 0.25]} fontSize={0.18} color="#475569" anchorX="center" anchorY="middle">
+        导入 STEP 后显示真实工件
+      </Text>
+    </group>
+  );
+}
+
+function ViewController({ preset }: { preset: ViewPreset }) {
+  const camera = useThree((state) => state.camera);
+  const controls = useThree((state) => state.controls) as unknown as
+    | { target: THREE.Vector3; update: () => void }
+    | undefined;
+  useEffect(() => {
+    const positions: Record<ViewPreset, [number, number, number]> = {
+      iso: [10, -15, 8],
+      top: [0, 0, 18],
+      front: [0, -18, 2],
+      right: [18, 0, 2]
+    };
+    camera.position.set(...positions[preset]);
+    camera.lookAt(0, 0, 0);
+    if (controls && "target" in controls) {
+      controls.target.set(0, 0, 0);
+      controls.update();
+    }
+  }, [camera, controls, preset]);
+  return null;
+}
+
 function CandidateOverlay({
   candidate,
+  transform,
   visible,
   selected,
   hovered,
   sameDiameter
 }: {
   candidate: GeometryCandidate;
+  transform: DisplayTransform;
   visible: boolean;
   selected: boolean;
   hovered: boolean;
@@ -122,13 +176,22 @@ function CandidateOverlay({
   const setHoverCandidate = useWorkbenchStore((state) => state.setHoverCandidate);
   const toggleCandidate = useWorkbenchStore((state) => state.toggleCandidate);
   const setSameDiameterSource = useWorkbenchStore((state) => state.setSameDiameterSource);
-  const opacity = visible ? 1 : 0.16;
+  const opacity = selected || hovered ? 1 : sameDiameter ? 0.55 : visible ? 0.055 : 0;
   const color = selected ? "#facc15" : hovered ? "#38bdf8" : sameDiameter ? "#a78bfa" : "#2563eb";
 
   if (candidate.shape === "circle") {
+    const points = (candidate.polyline ?? sampleSegmentPath({
+      candidateId: candidate.id,
+      shape: "circle",
+      radiusMm: candidate.radiusMm,
+      center: candidate.center,
+      normal: candidate.normal,
+      startAngleRad: candidate.startAngleRad,
+      endAngleRad: candidate.endAngleRad,
+      closed: candidate.closed
+    })).map((point) => toScenePoint(point, transform));
     return (
       <group
-        position={toScenePoint(candidate.center)}
         onPointerEnter={(event) => {
           event.stopPropagation();
           setHoverCandidate(candidate.id);
@@ -142,12 +205,9 @@ function CandidateOverlay({
           }
         }}
       >
-        <mesh>
-          <torusGeometry args={[candidate.radiusMm * SCALE, selected || hovered ? 0.018 : 0.011, 12, 72]} />
-          <meshBasicMaterial color={color} transparent opacity={opacity} depthTest={false} />
-        </mesh>
+        <Line points={points} color={color} lineWidth={selected || hovered ? 5 : 2} transparent opacity={opacity} depthTest={false} />
         {(selected || hovered) && (
-          <Text position={[0, 0, 0.18]} fontSize={0.12} color="#0f172a" anchorX="center" anchorY="middle">
+          <Text position={toScenePoint(candidate.center, transform)} fontSize={0.12} color="#0f172a" anchorX="center" anchorY="middle">
             {candidate.label}
           </Text>
         )}
@@ -155,7 +215,7 @@ function CandidateOverlay({
     );
   }
 
-  const points = candidate.points.map(toScenePoint);
+  const points = candidate.points.map((point) => toScenePoint(point, transform));
   return (
     <Line
       points={points}
@@ -178,8 +238,8 @@ function CandidateOverlay({
   );
 }
 
-function SeamOverlay({ seam, index, active }: { seam: WeldSeam; index: number; active: boolean }) {
-  const points = seam.fallbackPath.map(toScenePoint);
+function SeamOverlay({ seam, transform, index, active }: { seam: WeldSeam; transform: DisplayTransform; index: number; active: boolean }) {
+  const points = seam.fallbackPath.map((point) => toScenePoint(point, transform));
   const labelPoint = points[Math.floor(points.length / 2)] ?? [0, 0, 0];
 
   return (
@@ -200,14 +260,16 @@ function SeamOverlay({ seam, index, active }: { seam: WeldSeam; index: number; a
 
 function TorchGhost({
   pose,
+  transform,
   index,
   total
 }: {
   pose: ReturnType<typeof sampleTorchPoses>[number];
+  transform: DisplayTransform;
   index: number;
   total: number;
 }) {
-  const focus = toScenePoint(pose.position);
+  const focus = toScenePoint(pose.position, transform);
   const beamStart: [number, number, number] = [
     focus[0] - pose.beamDirection[0] * 0.72,
     focus[1] - pose.beamDirection[1] * 0.72,
