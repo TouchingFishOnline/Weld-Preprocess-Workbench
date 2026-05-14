@@ -119,6 +119,11 @@ h1 {
   font-style: normal;
 }
 
+.import-strip .semantic-candidate-badge {
+  color: #0f766e;
+  font-weight: 700;
+}
+
 .tool-panel,
 .inspector {
   background: #f8fafc;

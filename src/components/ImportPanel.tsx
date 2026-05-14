@@ -12,6 +12,7 @@ export function ImportPanel() {
   const workpiece = useWorkbenchStore((state) => state.workpiece);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const semanticCandidateCount = workpiece?.seamCandidates?.length ?? 0;
 
   async function loadDemo() {
     setBusy(true);
@@ -110,6 +111,9 @@ export function ImportPanel() {
             ? `${workpiece.edges.length} edges / ${workpiece.faces.length} faces`
             : "后端会生成真实 GLB 与边/面元数据"}
         </span>
+        {semanticCandidateCount > 0 && (
+          <span className="semantic-candidate-badge">已启用语义焊缝候选：{semanticCandidateCount} 条</span>
+        )}
       </div>
       <button type="button" className="secondary-action" disabled={busy} onClick={() => stepInputRef.current?.click()}>
         {busy ? <Loader2 size={16} className="spin" /> : <FileUp size={16} />}
