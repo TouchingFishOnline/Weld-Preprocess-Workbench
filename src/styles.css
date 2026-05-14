@@ -87,7 +87,7 @@ h1 {
 
 .import-strip {
   display: grid;
-  grid-template-columns: 1fr repeat(4, auto);
+  grid-template-columns: 1fr auto repeat(4, auto);
   align-items: center;
   gap: 12px;
   padding: 14px 24px;
@@ -99,7 +99,7 @@ h1 {
   padding-block: 10px;
 }
 
-.import-strip input {
+.import-strip input[type="file"] {
   display: none;
 }
 
@@ -122,6 +122,39 @@ h1 {
 .import-strip .semantic-candidate-badge {
   color: #0f766e;
   font-weight: 700;
+}
+
+.preprocess-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid #d3dce5;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1f2937;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.preprocess-toggle input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: #1d4ed8;
+  pointer-events: none;
+}
+
+.preprocess-toggle span {
+  pointer-events: none;
+}
+
+.preprocess-toggle:has(input:checked) {
+  border-color: #0f766e;
+  background: #e8f6f3;
+  color: #0f513f;
 }
 
 .tool-panel,

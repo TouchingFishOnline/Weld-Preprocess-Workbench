@@ -19,6 +19,7 @@ def preprocess_step(
     workpiece_id: str | None = None,
     tolerance: float = 0.18,
     angular_tolerance: float = 0.08,
+    include_seam_candidates: bool = True,
 ) -> dict[str, Any]:
     """Convert a STEP file into a browser-loadable GLB plus CAD metadata."""
 
@@ -41,37 +42,39 @@ def preprocess_step(
     bbox = _bbox(shape)
     edges = _extract_edges(shape)
     faces = _extract_faces(shape)
-    seam_candidates = _build_semantic_seam_candidates(edges, bbox)
     manifest: dict[str, Any] = {
         "id": resolved_id,
         "sourceFile": source_path.name,
         "sourceHash": file_hash,
         "modelUrl": "model.glb",
         "stepUrl": source_path.name,
-        "seamCandidateUrl": "seam-candidates.json",
         "units": "mm",
         "bbox": bbox,
         "displayTransform": _display_transform(bbox),
         "edges": edges,
         "faces": faces,
-        "seamCandidates": seam_candidates,
     }
+
+    if include_seam_candidates:
+        seam_candidates = _build_semantic_seam_candidates(edges, bbox)
+        manifest["seamCandidateUrl"] = "seam-candidates.json"
+        manifest["seamCandidates"] = seam_candidates
+        (target_dir / "seam-candidates.json").write_text(
+            json.dumps(
+                {
+                    "schemaVersion": 1,
+                    "workpieceId": resolved_id,
+                    "sourceHash": file_hash,
+                    "candidates": seam_candidates,
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
 
     (target_dir / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    (target_dir / "seam-candidates.json").write_text(
-        json.dumps(
-            {
-                "schemaVersion": 1,
-                "workpieceId": resolved_id,
-                "sourceHash": file_hash,
-                "candidates": seam_candidates,
-            },
-            ensure_ascii=False,
-            indent=2,
-        ),
         encoding="utf-8",
     )
     return manifest

@@ -45,6 +45,24 @@ class PreprocessStepTest(unittest.TestCase):
             self.assertTrue(any(abs(candidate["diameterMm"] - 22.5) < 0.2 for candidate in nozzle_root_candidates))
             self.assertTrue(all(len(candidate["polyline"]) >= 32 for candidate in nozzle_root_candidates[:5]))
 
+    def test_can_skip_semantic_seam_candidate_generation(self):
+        source = Path(__file__).resolve().parents[2] / "manifold-combined.STEP"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "workpiece"
+            manifest = preprocess_step(source, output_dir, workpiece_id="test-manifold", include_seam_candidates=False)
+
+            self.assertNotIn("seamCandidateUrl", manifest)
+            self.assertNotIn("seamCandidates", manifest)
+            self.assertTrue((output_dir / "model.glb").exists())
+            self.assertTrue((output_dir / "manifest.json").exists())
+            self.assertTrue((output_dir / "manifold-combined.STEP").exists())
+            self.assertFalse((output_dir / "seam-candidates.json").exists())
+
+            saved_manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertNotIn("seamCandidateUrl", saved_manifest)
+            self.assertNotIn("seamCandidates", saved_manifest)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -4,7 +4,7 @@ import re
 import shutil
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.preprocess import preprocess_step
@@ -29,7 +29,7 @@ def health() -> dict[str, str]:
 
 
 @app.post("/api/workpieces")
-async def create_workpiece(file: UploadFile = File(...)) -> dict[str, object]:
+async def create_workpiece(file: UploadFile = File(...), preprocess: bool = Form(False)) -> dict[str, object]:
     filename = file.filename or "workpiece.step"
     suffix = Path(filename).suffix.lower()
     if suffix not in {".step", ".stp"}:
@@ -44,7 +44,7 @@ async def create_workpiece(file: UploadFile = File(...)) -> dict[str, object]:
         shutil.copyfileobj(file.file, handle)
 
     output_dir = PUBLIC_WORKPIECES / workpiece_id
-    manifest = preprocess_step(source_path, output_dir, workpiece_id=workpiece_id)
+    manifest = preprocess_step(source_path, output_dir, workpiece_id=workpiece_id, include_seam_candidates=preprocess)
     return {
         "manifest": manifest,
         "manifestUrl": f"/workpieces/{workpiece_id}/manifest.json",

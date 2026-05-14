@@ -10,9 +10,17 @@ export async function fetchWorkpieceManifest(manifestUrl: string): Promise<Workp
   return response.json() as Promise<WorkpieceManifest>;
 }
 
-export async function uploadStepFile(file: File): Promise<{ manifest: WorkpieceManifest; manifestUrl: string }> {
+export interface UploadStepOptions {
+  preprocess: boolean;
+}
+
+export async function uploadStepFile(
+  file: File,
+  options: UploadStepOptions = { preprocess: false }
+): Promise<{ manifest: WorkpieceManifest; manifestUrl: string }> {
   const form = new FormData();
   form.append("file", file);
+  form.append("preprocess", String(options.preprocess));
   const response = await fetch("/api/workpieces", {
     method: "POST",
     body: form

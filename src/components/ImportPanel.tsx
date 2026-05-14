@@ -12,6 +12,7 @@ export function ImportPanel() {
   const workpiece = useWorkbenchStore((state) => state.workpiece);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [preprocessOnUpload, setPreprocessOnUpload] = useState(false);
   const semanticCandidateCount = workpiece?.seamCandidates?.length ?? 0;
 
   async function loadDemo() {
@@ -34,9 +35,9 @@ export function ImportPanel() {
     }
 
     setBusy(true);
-    setMessage("正在上传并预处理 STEP...");
+    setMessage(preprocessOnUpload ? "正在上传 STEP 并生成语义焊缝候选..." : "正在上传 STEP 并生成工作台几何...");
     try {
-      const result = await uploadStepFile(file);
+      const result = await uploadStepFile(file, { preprocess: preprocessOnUpload });
       loadWorkpieceManifest(result.manifest, result.manifestUrl);
       setMessage(null);
     } catch (error) {
@@ -87,6 +88,7 @@ export function ImportPanel() {
     <section className={workpiece ? "import-strip compact" : "import-strip"}>
       <input
         ref={stepInputRef}
+        className="file-input"
         type="file"
         accept=".step,.stp"
         onChange={(event) => {
@@ -96,6 +98,7 @@ export function ImportPanel() {
       />
       <input
         ref={projectInputRef}
+        className="file-input"
         type="file"
         accept=".json,.weld-workbench.json"
         onChange={(event) => {
@@ -115,6 +118,24 @@ export function ImportPanel() {
           <span className="semantic-candidate-badge">已启用语义焊缝候选：{semanticCandidateCount} 条</span>
         )}
       </div>
+      <button
+        type="button"
+        className="preprocess-toggle"
+        aria-pressed={preprocessOnUpload}
+        disabled={busy}
+        onClick={() => {
+          setPreprocessOnUpload((current) => !current);
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={preprocessOnUpload}
+          disabled={busy}
+          readOnly
+          tabIndex={-1}
+        />
+        <span>生成语义候选</span>
+      </button>
       <button type="button" className="secondary-action" disabled={busy} onClick={() => stepInputRef.current?.click()}>
         {busy ? <Loader2 size={16} className="spin" /> : <FileUp size={16} />}
         上传 STEP
