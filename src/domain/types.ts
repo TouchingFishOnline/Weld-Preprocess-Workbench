@@ -67,6 +67,7 @@ export type WeldSeamSegment =
       shape: "rectangle" | "edge";
       points: Vec3[];
       closed: boolean;
+      frame?: CandidateLocalFrame;
     };
 
 export interface WeldSeam {

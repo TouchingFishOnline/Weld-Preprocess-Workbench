@@ -91,6 +91,7 @@ function candidateToSegment(candidate: GeometryCandidate): WeldSeamSegment {
     candidateId: candidate.id,
     shape: candidate.shape,
     points: candidate.points,
-    closed: candidate.closed
+    closed: candidate.closed,
+    frame: candidate.frame
   };
 }

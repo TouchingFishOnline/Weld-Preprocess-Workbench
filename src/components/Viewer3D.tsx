@@ -223,6 +223,9 @@ function CandidateOverlay({
   const emphasized = groupHighlighted && visible;
   const opacity = selected || hovered ? 1 : sameDiameter ? 0.55 : emphasized ? 0.82 : visible ? 0.055 : 0;
   const color = selected ? "#facc15" : hovered ? "#38bdf8" : sameDiameter ? "#a78bfa" : emphasized ? "#f97316" : "#2563eb";
+  if (opacity <= 0) {
+    return null;
+  }
 
   if (candidate.shape === "circle") {
     const points = (candidate.polyline ?? sampleSegmentPath({

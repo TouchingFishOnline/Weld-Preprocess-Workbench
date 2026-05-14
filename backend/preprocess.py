@@ -248,7 +248,7 @@ def _build_nozzle_root_candidates(
     used_edge_ids: set[str],
 ) -> list[dict[str, Any]]:
     top_z_threshold = bbox["min"][2] + bbox["size"][2] * 0.62
-    nozzle_groups: dict[tuple[int, int], list[dict[str, Any]]] = {}
+    nozzle_edges: list[dict[str, Any]] = []
 
     for edge in edges:
         if edge["type"] != "circle" or not edge.get("center") or not edge.get("normal"):
@@ -267,23 +267,23 @@ def _build_nozzle_root_candidates(
         if length < 5.0:
             continue
 
-        key = (round(center[0] * 5), round(center[1] * 5))
-        nozzle_groups.setdefault(key, []).append(edge)
+        nozzle_edges.append(edge)
 
     candidates: list[dict[str, Any]] = []
-    for group in sorted(nozzle_groups.values(), key=lambda items: (items[0]["center"][1], items[0]["center"][0])):
-        rings: dict[tuple[int, int], list[dict[str, Any]]] = {}
-        for edge in group:
-            center = edge["center"]
-            diameter = float(edge.get("diameterMm") or 0.0)
-            ring_key = (round(center[2] * 4), round(diameter * 4))
-            rings.setdefault(ring_key, []).append(edge)
-
-        usable_rings = [ring for ring in rings.values() if len(ring) >= 1]
+    for group in _cluster_edges_by_center_xy(nozzle_edges):
+        usable_rings = _cluster_edges_by_z_and_diameter(group)
         if len(usable_rings) < 2:
             continue
 
-        root_ring = min(usable_rings, key=lambda ring: (average(edge["center"][2] for edge in ring), -sum(edge["lengthMm"] for edge in ring)))
+        root_options = [
+            ring
+            for ring in usable_rings
+            if 18.0 <= average(float(edge.get("diameterMm") or 0.0) for edge in ring) <= 36.0
+        ]
+        if not root_options:
+            continue
+
+        root_ring = min(root_options, key=lambda ring: (average(edge["center"][2] for edge in ring), -sum(edge["lengthMm"] for edge in ring)))
         representative = root_ring[0]
         center = representative["center"]
         radius = float(representative["radiusMm"])
@@ -381,6 +381,47 @@ def _build_round_topology_candidates(
         )
 
     return candidates
+
+
+def _cluster_edges_by_center_xy(edges: list[dict[str, Any]], tolerance_mm: float = 0.35) -> list[list[dict[str, Any]]]:
+    clusters: list[list[dict[str, Any]]] = []
+    centers: list[list[float]] = []
+    for edge in sorted(edges, key=lambda item: (item["center"][1], item["center"][0])):
+        center = edge["center"]
+        for index, cluster_center in enumerate(centers):
+            if math.hypot(center[0] - cluster_center[0], center[1] - cluster_center[1]) <= tolerance_mm:
+                clusters[index].append(edge)
+                count = len(clusters[index])
+                centers[index] = [
+                    cluster_center[0] + (center[0] - cluster_center[0]) / count,
+                    cluster_center[1] + (center[1] - cluster_center[1]) / count,
+                ]
+                break
+        else:
+            clusters.append([edge])
+            centers.append([center[0], center[1]])
+    return clusters
+
+
+def _cluster_edges_by_z_and_diameter(edges: list[dict[str, Any]], tolerance_mm: float = 0.35) -> list[list[dict[str, Any]]]:
+    clusters: list[list[dict[str, Any]]] = []
+    centers: list[list[float]] = []
+    for edge in sorted(edges, key=lambda item: (item["center"][2], float(item.get("diameterMm") or 0.0))):
+        center = edge["center"]
+        diameter = float(edge.get("diameterMm") or 0.0)
+        for index, cluster_center in enumerate(centers):
+            if abs(center[2] - cluster_center[0]) <= tolerance_mm and abs(diameter - cluster_center[1]) <= tolerance_mm:
+                clusters[index].append(edge)
+                count = len(clusters[index])
+                centers[index] = [
+                    cluster_center[0] + (center[2] - cluster_center[0]) / count,
+                    cluster_center[1] + (diameter - cluster_center[1]) / count,
+                ]
+                break
+        else:
+            clusters.append([edge])
+            centers.append([center[2], diameter])
+    return clusters
 
 
 def _build_linear_body_candidates(

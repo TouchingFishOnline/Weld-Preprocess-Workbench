@@ -167,4 +167,51 @@ describe("sampleTorchPoses", () => {
     expect(Math.sign(positive.beamDirection[1])).toBe(-Math.sign(negative.beamDirection[1]));
     expect(positive.beamDirection[2]).toBeCloseTo(negative.beamDirection[2]);
   });
+
+  it("uses a rectangular seam local frame as the pose reference normal", () => {
+    const seam: WeldSeam = {
+      id: "rect",
+      label: "S-rect",
+      segments: [
+        {
+          candidateId: "rect-1",
+          shape: "rectangle",
+          points: [
+            [0, 0, 0],
+            [10, 0, 0],
+            [10, 0, 10],
+            [0, 0, 10],
+            [0, 0, 0]
+          ],
+          closed: true,
+          frame: {
+            tangent: [1, 0, 0],
+            referenceNormal: [0, 1, 0],
+            adjacentNormals: [[0, 1, 0]]
+          }
+        }
+      ],
+      fallbackPath: [
+        [0, 0, 0],
+        [10, 0, 0],
+        [10, 0, 10],
+        [0, 0, 10],
+        [0, 0, 0]
+      ]
+    };
+
+    const poses = sampleTorchPoses(seam, {
+      referenceNormal: [0, 0, 1],
+      normalFlipped: false,
+      travelDirection: "forward",
+      workAngleDeg: 0,
+      travelAngleDeg: 0,
+      lateralOffsetMm: 0,
+      focusOffsetMm: 2,
+      sampleCount: 4
+    });
+
+    expect(poses[0].referenceNormal).toEqual([0, 1, 0]);
+    expect(poses[0].position).toEqual([0, 2, 0]);
+  });
 });

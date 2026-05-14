@@ -10,7 +10,8 @@ export function sampleTorchPoses(seam: WeldSeam, definition: LaserPoseDefinition
     return sampleCircularPoses(primaryCircle, definition);
   }
 
-  return samplePolylinePoses(seam.fallbackPath, definition, [0, 0, 1]);
+  const primaryPolyline = seam.segments.find((segment) => segment.shape !== "circle");
+  return samplePolylinePoses(seam.fallbackPath, definition, primaryPolyline?.frame?.referenceNormal ?? [0, 0, 1], primaryPolyline?.frame?.referenceNormal);
 }
 
 function sampleCircularPoses(
@@ -37,14 +38,20 @@ function sampleCircularPoses(
   });
 }
 
-function samplePolylinePoses(path: Vec3[], definition: LaserPoseDefinition, fallbackNormal: Vec3): TorchPoseSample[] {
+function samplePolylinePoses(
+  path: Vec3[],
+  definition: LaserPoseDefinition,
+  fallbackNormal: Vec3,
+  preferredNormal?: Vec3
+): TorchPoseSample[] {
   if (path.length === 0) {
     return [];
   }
 
   const count = Math.max(2, Math.min(definition.sampleCount, path.length));
+  const requestedNormal = preferredNormal ?? definition.referenceNormal;
   const normal = normalize(
-    definition.normalFlipped ? scale(definition.referenceNormal, -1) : definition.referenceNormal,
+    definition.normalFlipped ? scale(requestedNormal, -1) : requestedNormal,
     [0, 0, 1]
   );
 

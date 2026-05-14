@@ -119,7 +119,7 @@ describe("workbench store", () => {
     expect(store.getState().candidates.map((candidate) => candidate.id)).toEqual(["edge_1"]);
   });
 
-  it("loads semantic seam candidates before raw edge candidates", () => {
+  it("loads semantic seam candidates while keeping raw edge fallback candidates", () => {
     const store = createWorkbenchStore();
 
     store.getState().loadWorkpieceManifest(
@@ -150,7 +150,7 @@ describe("workbench store", () => {
       "/workpieces/wp/manifest.json"
     );
 
-    expect(store.getState().candidates.map((candidate) => candidate.id)).toEqual(["seam_candidate_001"]);
+    expect(store.getState().candidates.map((candidate) => candidate.id)).toEqual(["seam_candidate_001", "raw-edge:edge_1"]);
   });
 
   it("exports and restores operator annotations for the same STEP hash", () => {

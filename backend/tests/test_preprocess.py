@@ -108,6 +108,24 @@ class PreprocessStepTest(unittest.TestCase):
             self.assertNotIn("seamCandidateUrl", saved_manifest)
             self.assertNotIn("seamCandidates", saved_manifest)
 
+    def test_groups_nozzle_arcs_across_floating_point_boundaries(self):
+        source = Path(__file__).resolve().parent / "fixtures" / "EK-manifold.step"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "workpiece"
+            manifest = preprocess_step(source, output_dir, workpiece_id="ek-manifold-test")
+            nozzle_root_candidates = [
+                candidate for candidate in manifest["seamCandidates"] if candidate["kind"] == "nozzle-root-circular"
+            ]
+
+            self.assertGreaterEqual(len(nozzle_root_candidates), 27)
+            self.assertTrue(
+                any(
+                    abs(candidate["center"][1] - 387.3) < 0.2 and abs(candidate["diameterMm"] - 22.5) < 0.3
+                    for candidate in nozzle_root_candidates
+                )
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

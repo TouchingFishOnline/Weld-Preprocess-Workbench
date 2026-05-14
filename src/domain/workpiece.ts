@@ -53,6 +53,20 @@ export function manifestEdgesToCandidates(edges: WorkpieceEdge[]): GeometryCandi
   return edges.map(edgeToCandidate).filter((candidate): candidate is GeometryCandidate => Boolean(candidate));
 }
 
+export function manifestEdgesToRawEdgeCandidates(edges: WorkpieceEdge[]): GeometryCandidate[] {
+  return edges
+    .filter((edge) => edge.polyline.length >= 2)
+    .map((edge) => ({
+      id: `raw-edge:${edge.id}`,
+      shape: "edge" as const,
+      kind: "line" as const,
+      label: edge.id,
+      points: edge.polyline,
+      closed: edge.closed,
+      adjacentFaceIds: edge.adjacentFaceIds
+    }));
+}
+
 export function semanticSeamCandidateToCandidate(candidate: WorkpieceSeamCandidate): GeometryCandidate {
   if (candidate.shape === "rectangle") {
     return {
@@ -105,7 +119,10 @@ export function semanticSeamCandidateToCandidate(candidate: WorkpieceSeamCandida
 
 export function manifestToCandidates(manifest: WorkpieceManifest): GeometryCandidate[] {
   if (manifest.seamCandidates && manifest.seamCandidates.length > 0) {
-    return manifest.seamCandidates.map(semanticSeamCandidateToCandidate);
+    return [
+      ...manifest.seamCandidates.map(semanticSeamCandidateToCandidate),
+      ...manifestEdgesToRawEdgeCandidates(manifest.edges)
+    ];
   }
 
   return manifestEdgesToCandidates(manifest.edges);

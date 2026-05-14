@@ -83,8 +83,10 @@ describe("workpiece manifest adapters", () => {
       ]
     });
 
-    expect(candidates.map((candidate) => candidate.id)).toEqual(["seam_candidate_001"]);
+    expect(candidates.map((candidate) => candidate.id)).toEqual(["seam_candidate_001", "raw-edge:edge_1"]);
     expect(candidates[0].label).toBe("Nozzle root 001");
+    expect(candidates[1].shape).toBe("edge");
+    expect(candidates[1].label).toBe("edge_1");
   });
 
   it("converts rectangular semantic seam candidates into rectangle candidates", () => {
@@ -111,7 +113,7 @@ describe("workpiece manifest adapters", () => {
       ]
     });
 
-    expect(candidates).toHaveLength(1);
+    expect(candidates).toHaveLength(2);
     expect(candidates[0].shape).toBe("rectangle");
     expect(candidates[0].semanticKind).toBe("rectangular-sleeve-root-seam");
     if (candidates[0].shape !== "rectangle") {
