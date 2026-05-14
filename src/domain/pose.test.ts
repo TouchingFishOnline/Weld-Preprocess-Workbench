@@ -38,4 +38,87 @@ describe("sampleTorchPoses", () => {
     expect(poses[2].position[1]).toBeGreaterThan(9);
     expect(poses[0].beamDirection).not.toEqual(poses[2].beamDirection);
   });
+
+  it("uses STEP polyline samples for circular seams that are not in the XY plane", () => {
+    const seam: WeldSeam = {
+      id: "tilted-circle",
+      label: "S-tilted",
+      segments: [
+        {
+          candidateId: "edge-polyline-circle",
+          shape: "circle",
+          radiusMm: 10,
+          center: [100, 100, 100],
+          normal: [1, 0, 0],
+          startAngleRad: 0,
+          endAngleRad: Math.PI * 2,
+          closed: false,
+          polyline: [
+            [0, 0, 0],
+            [0, 0, 10],
+            [0, 0, 20]
+          ]
+        }
+      ],
+      fallbackPath: [
+        [0, 0, 0],
+        [0, 0, 10],
+        [0, 0, 20]
+      ]
+    };
+
+    const poses = sampleTorchPoses(seam, {
+      referenceNormal: [0, 1, 0],
+      normalFlipped: false,
+      travelDirection: "forward",
+      workAngleDeg: 0,
+      travelAngleDeg: 0,
+      lateralOffsetMm: 0,
+      focusOffsetMm: 2,
+      sampleCount: 3
+    });
+
+    expect(poses.map((pose) => pose.position)).toEqual([
+      [0, 2, 0],
+      [0, 2, 10],
+      [0, 2, 20]
+    ]);
+    expect(poses[1].tangent).toEqual([0, 0, 1]);
+    expect(poses[1].referenceNormal).toEqual([0, 1, 0]);
+  });
+
+  it("builds circular poses in the plane described by the segment normal", () => {
+    const seam: WeldSeam = {
+      id: "yz-circle",
+      label: "S-yz",
+      segments: [
+        {
+          candidateId: "edge-yz-circle",
+          shape: "circle",
+          radiusMm: 10,
+          center: [0, 0, 0],
+          normal: [1, 0, 0],
+          startAngleRad: 0,
+          endAngleRad: Math.PI * 2,
+          closed: true
+        }
+      ],
+      fallbackPath: []
+    };
+
+    const poses = sampleTorchPoses(seam, {
+      referenceNormal: [1, 0, 0],
+      normalFlipped: false,
+      travelDirection: "forward",
+      workAngleDeg: 0,
+      travelAngleDeg: 0,
+      lateralOffsetMm: 0,
+      focusOffsetMm: 0,
+      sampleCount: 4
+    });
+
+    expect(poses.map((pose) => pose.position[0])).toEqual([0, 0, 0, 0]);
+    expect(poses[0].position).toEqual([0, 0, -10]);
+    expect(poses[1].position).toEqual([0, 10, 0]);
+  });
 });

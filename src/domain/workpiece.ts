@@ -10,6 +10,12 @@ export function transformPoint(point: Vec3, transform: DisplayTransform): Vec3 {
   ];
 }
 
+export function transformDirection(direction: Vec3, transform: DisplayTransform): Vec3 {
+  const sceneDirection: Vec3 =
+    transform.cadToScene === "x,z,-y" ? [direction[0], direction[2], -direction[1]] : direction;
+  return sceneDirection.map((component) => (Math.abs(component) < 1e-12 ? 0 : component)) as Vec3;
+}
+
 export function edgeToCandidate(edge: WorkpieceEdge): GeometryCandidate | null {
   if (edge.type === "circle" && edge.radiusMm !== undefined && edge.center && edge.normal) {
     return {

@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { filterCandidatesByTargetShape, findSameDiameterCandidates, sampleSegmentPath } from "../domain/geometry";
 import { sampleTorchPoses } from "../domain/pose";
 import type { GeometryCandidate, Vec3, WeldSeam } from "../domain/types";
-import { transformPoint } from "../domain/workpiece";
+import { transformDirection, transformPoint } from "../domain/workpiece";
 import type { DisplayTransform } from "../domain/workpieceTypes";
 import { useWorkbenchStore } from "../state/workbenchStore";
 
@@ -300,10 +300,12 @@ function TorchGhost({
   total: number;
 }) {
   const focus = toScenePoint(pose.position, transform);
+  const beamDirection = transformDirection(pose.beamDirection, transform);
+  const referenceNormal = transformDirection(pose.referenceNormal, transform);
   const beamStart: [number, number, number] = [
-    focus[0] - pose.beamDirection[0] * 0.72,
-    focus[1] - pose.beamDirection[1] * 0.72,
-    focus[2] - pose.beamDirection[2] * 0.72
+    focus[0] - beamDirection[0] * 0.72,
+    focus[1] - beamDirection[1] * 0.72,
+    focus[2] - beamDirection[2] * 0.72
   ];
   const opacity = index === 0 ? 0.92 : 0.22 + (index / Math.max(1, total - 1)) * 0.28;
 
@@ -315,9 +317,9 @@ function TorchGhost({
           points={[
             focus,
             [
-              focus[0] + pose.referenceNormal[0] * 0.42,
-              focus[1] + pose.referenceNormal[1] * 0.42,
-              focus[2] + pose.referenceNormal[2] * 0.42
+              focus[0] + referenceNormal[0] * 0.42,
+              focus[1] + referenceNormal[1] * 0.42,
+              focus[2] + referenceNormal[2] * 0.42
             ]
           ]}
           color="#0f766e"

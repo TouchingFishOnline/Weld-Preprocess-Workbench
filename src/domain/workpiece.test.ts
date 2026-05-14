@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { edgeToCandidate, transformPoint } from "./workpiece";
+import { edgeToCandidate, transformDirection, transformPoint } from "./workpiece";
 import type { WorkpieceManifest } from "./workpieceTypes";
 
 const manifest: WorkpieceManifest = {
@@ -42,6 +42,11 @@ const manifest: WorkpieceManifest = {
 describe("workpiece manifest adapters", () => {
   it("transforms CAD points into scene points with the manifest display transform", () => {
     expect(transformPoint([60, 10, 20], manifest.displayTransform)).toEqual([1, 1, 0]);
+  });
+
+  it("transforms CAD direction vectors into scene direction vectors without scale or translation", () => {
+    expect(transformDirection([0, 0, 1], manifest.displayTransform)).toEqual([0, 1, 0]);
+    expect(transformDirection([0, 1, 0], manifest.displayTransform)).toEqual([0, 0, -1]);
   });
 
   it("converts circular manifest edges into circle candidates", () => {
