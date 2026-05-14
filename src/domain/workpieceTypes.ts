@@ -34,6 +34,21 @@ export interface WorkpieceFace {
   surfaceType: number;
 }
 
+export interface WorkpieceSeamCandidate {
+  id: string;
+  kind: "nozzle-root-circular" | string;
+  shape: "circle";
+  label: string;
+  sourceEdgeIds: string[];
+  radiusMm: number;
+  diameterMm: number;
+  center: Vec3;
+  normal: Vec3;
+  closed: boolean;
+  confidence: number;
+  polyline: Vec3[];
+}
+
 export interface WorkpieceManifest {
   id: string;
   sourceFile: string;
@@ -41,8 +56,10 @@ export interface WorkpieceManifest {
   units: "mm";
   modelUrl: string;
   stepUrl: string;
+  seamCandidateUrl?: string;
   bbox: WorkpieceBbox;
   displayTransform: DisplayTransform;
   edges: WorkpieceEdge[];
   faces: WorkpieceFace[];
+  seamCandidates?: WorkpieceSeamCandidate[];
 }

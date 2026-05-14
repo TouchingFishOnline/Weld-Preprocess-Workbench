@@ -1,5 +1,5 @@
 import type { GeometryCandidate, Vec3 } from "./types";
-import type { DisplayTransform, WorkpieceEdge } from "./workpieceTypes";
+import type { DisplayTransform, WorkpieceEdge, WorkpieceManifest, WorkpieceSeamCandidate } from "./workpieceTypes";
 
 export function transformPoint(point: Vec3, transform: DisplayTransform): Vec3 {
   const scenePoint: Vec3 = transform.cadToScene === "x,z,-y" ? [point[0], point[2], -point[1]] : point;
@@ -49,4 +49,28 @@ export function edgeToCandidate(edge: WorkpieceEdge): GeometryCandidate | null {
 
 export function manifestEdgesToCandidates(edges: WorkpieceEdge[]): GeometryCandidate[] {
   return edges.map(edgeToCandidate).filter((candidate): candidate is GeometryCandidate => Boolean(candidate));
+}
+
+export function semanticSeamCandidateToCandidate(candidate: WorkpieceSeamCandidate): GeometryCandidate {
+  return {
+    id: candidate.id,
+    shape: "circle",
+    kind: candidate.closed ? "circle" : "arc",
+    label: candidate.label,
+    radiusMm: candidate.radiusMm,
+    center: candidate.center,
+    normal: candidate.normal,
+    startAngleRad: 0,
+    endAngleRad: Math.PI * 2,
+    closed: candidate.closed,
+    polyline: candidate.polyline
+  };
+}
+
+export function manifestToCandidates(manifest: WorkpieceManifest): GeometryCandidate[] {
+  if (manifest.seamCandidates && manifest.seamCandidates.length > 0) {
+    return manifest.seamCandidates.map(semanticSeamCandidateToCandidate);
+  }
+
+  return manifestEdgesToCandidates(manifest.edges);
 }

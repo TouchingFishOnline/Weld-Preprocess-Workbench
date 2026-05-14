@@ -106,6 +106,40 @@ describe("workbench store", () => {
     expect(store.getState().candidates.map((candidate) => candidate.id)).toEqual(["edge_1"]);
   });
 
+  it("loads semantic seam candidates before raw edge candidates", () => {
+    const store = createWorkbenchStore();
+
+    store.getState().loadWorkpieceManifest(
+      {
+        ...manifest,
+        seamCandidateUrl: "seam-candidates.json",
+        seamCandidates: [
+          {
+            id: "seam_candidate_001",
+            kind: "nozzle-root-circular",
+            shape: "circle",
+            label: "Nozzle root 001",
+            sourceEdgeIds: ["edge_1"],
+            radiusMm: 12.5,
+            diameterMm: 25,
+            center: [60, 10, 20],
+            normal: [0, 0, 1],
+            closed: true,
+            confidence: 0.82,
+            polyline: [
+              [72.5, 10, 20],
+              [60, 22.5, 20],
+              [47.5, 10, 20]
+            ]
+          }
+        ]
+      },
+      "/workpieces/wp/manifest.json"
+    );
+
+    expect(store.getState().candidates.map((candidate) => candidate.id)).toEqual(["seam_candidate_001"]);
+  });
+
   it("exports and restores operator annotations for the same STEP hash", () => {
     const sourceStore = createWorkbenchStore();
     sourceStore.getState().loadWorkpieceManifest(manifest, "/workpieces/wp/manifest.json");

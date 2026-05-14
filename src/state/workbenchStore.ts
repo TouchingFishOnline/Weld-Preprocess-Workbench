@@ -7,7 +7,7 @@ import {
   normalizeWorkbenchProject,
   validateWorkbenchProject
 } from "../domain/workbenchProject";
-import { manifestEdgesToCandidates } from "../domain/workpiece";
+import { manifestToCandidates } from "../domain/workpiece";
 import type {
   GeometryCandidate,
   LaserPoseDefinition,
@@ -85,7 +85,7 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
     set({
       workpiece: manifest,
       workpieceBaseUrl: baseUrl,
-      candidates: manifestEdgesToCandidates(manifest.edges),
+      candidates: manifestToCandidates(manifest),
       selectedCandidateIds: [],
       hoverCandidateId: null,
       stages: [],
