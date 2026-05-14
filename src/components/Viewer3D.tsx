@@ -23,6 +23,7 @@ export function Viewer3D() {
   const candidates = useWorkbenchStore((state) => state.candidates);
   const targetShape = useWorkbenchStore((state) => state.targetShape);
   const candidateKindFilter = useWorkbenchStore((state) => state.candidateKindFilter);
+  const candidateGroupHighlighted = useWorkbenchStore((state) => state.candidateGroupHighlighted);
   const selectedCandidateIds = useWorkbenchStore((state) => state.selectedCandidateIds);
   const hoverCandidateId = useWorkbenchStore((state) => state.hoverCandidateId);
   const sameDiameterSourceId = useWorkbenchStore((state) => state.sameDiameterSourceId);
@@ -98,6 +99,7 @@ export function Viewer3D() {
               selected={selectedCandidateIds.includes(candidate.id)}
               hovered={hoverCandidateId === candidate.id}
               sameDiameter={sameDiameterIds.has(candidate.id)}
+              groupHighlighted={candidateGroupHighlighted}
             />
           ))}
         {transform &&
@@ -196,7 +198,8 @@ function CandidateOverlay({
   visible,
   selected,
   hovered,
-  sameDiameter
+  sameDiameter,
+  groupHighlighted
 }: {
   candidate: GeometryCandidate;
   transform: DisplayTransform;
@@ -204,12 +207,14 @@ function CandidateOverlay({
   selected: boolean;
   hovered: boolean;
   sameDiameter: boolean;
+  groupHighlighted: boolean;
 }) {
   const setHoverCandidate = useWorkbenchStore((state) => state.setHoverCandidate);
   const toggleCandidate = useWorkbenchStore((state) => state.toggleCandidate);
   const setSameDiameterSource = useWorkbenchStore((state) => state.setSameDiameterSource);
-  const opacity = selected || hovered ? 1 : sameDiameter ? 0.55 : visible ? 0.055 : 0;
-  const color = selected ? "#facc15" : hovered ? "#38bdf8" : sameDiameter ? "#a78bfa" : "#2563eb";
+  const emphasized = groupHighlighted && visible;
+  const opacity = selected || hovered ? 1 : sameDiameter ? 0.55 : emphasized ? 0.82 : visible ? 0.055 : 0;
+  const color = selected ? "#facc15" : hovered ? "#38bdf8" : sameDiameter ? "#a78bfa" : emphasized ? "#f97316" : "#2563eb";
 
   if (candidate.shape === "circle") {
     const points = (candidate.polyline ?? sampleSegmentPath({
@@ -237,7 +242,7 @@ function CandidateOverlay({
           }
         }}
       >
-        <Line points={points} color={color} lineWidth={selected || hovered ? 5 : 2} transparent opacity={opacity} depthTest={false} />
+        <Line points={points} color={color} lineWidth={selected || hovered ? 5 : emphasized ? 4 : 2} transparent opacity={opacity} depthTest={false} />
         {(selected || hovered) && (
           <Text position={toScenePoint(candidate.center, transform)} fontSize={0.12} color="#0f172a" anchorX="center" anchorY="middle">
             {candidate.label}
@@ -252,7 +257,7 @@ function CandidateOverlay({
     <Line
       points={points}
       color={color}
-      lineWidth={selected || hovered ? 4 : 2}
+      lineWidth={selected || hovered ? 4 : emphasized ? 5 : 2}
       transparent
       opacity={opacity}
       onPointerEnter={(event) => {

@@ -69,6 +69,19 @@ describe("workbench store", () => {
     expect(store.getState().viewLocked).toBe(false);
   });
 
+  it("toggles candidate group highlight and clears it when changing filters", () => {
+    const store = createWorkbenchStore();
+
+    store.getState().toggleCandidateGroupHighlight();
+
+    expect(store.getState().candidateGroupHighlighted).toBe(true);
+
+    store.getState().setCandidateKindFilter("linear-body-seam");
+
+    expect(store.getState().candidateKindFilter).toBe("linear-body-seam");
+    expect(store.getState().candidateGroupHighlighted).toBe(false);
+  });
+
   it("creates a seam from the selected candidates and assigns it to the active stage", () => {
     const store = createWorkbenchStore();
     store.getState().loadWorkpieceManifest(manifest, "/workpieces/wp/manifest.json");

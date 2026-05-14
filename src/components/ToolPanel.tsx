@@ -1,4 +1,4 @@
-import { Circle, CornerDownRight, MousePointer2, RotateCcw, ScanSearch } from "lucide-react";
+import { Circle, CornerDownRight, MousePointer2, RotateCcw, ScanSearch, SearchCheck } from "lucide-react";
 import { filterCandidatesForWorkbench, findSameDiameterCandidates } from "../domain/geometry";
 import type { TargetShape } from "../domain/types";
 import { useWorkbenchStore } from "../state/workbenchStore";
@@ -13,11 +13,13 @@ export function ToolPanel() {
   const targetShape = useWorkbenchStore((state) => state.targetShape);
   const candidates = useWorkbenchStore((state) => state.candidates);
   const candidateKindFilter = useWorkbenchStore((state) => state.candidateKindFilter);
+  const candidateGroupHighlighted = useWorkbenchStore((state) => state.candidateGroupHighlighted);
   const selectedCandidateIds = useWorkbenchStore((state) => state.selectedCandidateIds);
   const sameDiameterSourceId = useWorkbenchStore((state) => state.sameDiameterSourceId);
   const activeStageId = useWorkbenchStore((state) => state.activeStageId);
   const setTargetShape = useWorkbenchStore((state) => state.setTargetShape);
   const setCandidateKindFilter = useWorkbenchStore((state) => state.setCandidateKindFilter);
+  const toggleCandidateGroupHighlight = useWorkbenchStore((state) => state.toggleCandidateGroupHighlight);
   const setSameDiameterSource = useWorkbenchStore((state) => state.setSameDiameterSource);
   const confirmSelectionAsSeam = useWorkbenchStore((state) => state.confirmSelectionAsSeam);
   const clearSelection = useWorkbenchStore((state) => state.clearSelection);
@@ -106,6 +108,15 @@ export function ToolPanel() {
           确认为焊缝
         </button>
         {!activeStageId && <p className="empty-note compact-note">请先在右侧新增一个焊接阶段。</p>}
+        <button
+          className={candidateGroupHighlighted ? "secondary-action active-action" : "secondary-action"}
+          type="button"
+          disabled={visibleCount === 0}
+          onClick={toggleCandidateGroupHighlight}
+        >
+          <SearchCheck size={17} />
+          高亮当前组
+        </button>
         <button className="secondary-action" type="button" onClick={() => setSameDiameterSource(selectedCandidateIds[0] ?? null)}>
           <Circle size={17} />
           同直径高亮

@@ -26,6 +26,7 @@ export interface WorkbenchState {
   viewLocked: boolean;
   candidates: GeometryCandidate[];
   candidateKindFilter: string | null;
+  candidateGroupHighlighted: boolean;
   selectedCandidateIds: string[];
   hoverCandidateId: string | null;
   stages: WeldStage[];
@@ -39,6 +40,7 @@ export interface WorkbenchState {
   toggleViewLocked: () => void;
   setTargetShape: (targetShape: TargetShape) => void;
   setCandidateKindFilter: (candidateKind: string | null) => void;
+  toggleCandidateGroupHighlight: () => void;
   setActiveStage: (stageId: string) => void;
   setHoverCandidate: (candidateId: string | null) => void;
   toggleCandidate: (candidateId: string) => void;
@@ -75,6 +77,7 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
   viewLocked: false,
   candidates: [],
   candidateKindFilter: null,
+  candidateGroupHighlighted: false,
   selectedCandidateIds: [],
   hoverCandidateId: null,
   stages: [],
@@ -90,6 +93,7 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
       workpieceBaseUrl: baseUrl,
       candidates: manifestToCandidates(manifest),
       candidateKindFilter: null,
+      candidateGroupHighlighted: false,
       selectedCandidateIds: [],
       hoverCandidateId: null,
       stages: [],
@@ -121,15 +125,21 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
     set({
       targetShape,
       candidateKindFilter: null,
+      candidateGroupHighlighted: false,
       selectedCandidateIds: [],
       sameDiameterSourceId: null
     }),
   setCandidateKindFilter: (candidateKindFilter) =>
     set({
       candidateKindFilter,
+      candidateGroupHighlighted: false,
       selectedCandidateIds: [],
       sameDiameterSourceId: null
     }),
+  toggleCandidateGroupHighlight: () =>
+    set((state) => ({
+      candidateGroupHighlighted: !state.candidateGroupHighlighted
+    })),
   setActiveStage: (stageId) =>
     set({
       activeStageId: stageId,
@@ -213,6 +223,7 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
       selectedCandidateIds: [],
       hoverCandidateId: null,
       candidateKindFilter: null,
+      candidateGroupHighlighted: false,
       sameDiameterSourceId: null
     });
 

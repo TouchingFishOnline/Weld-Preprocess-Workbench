@@ -253,6 +253,10 @@ h1 {
   pointer-events: none;
 }
 
+.action-stack button > * {
+  pointer-events: none;
+}
+
 .candidate-kind-list {
   display: grid;
   gap: 7px;
@@ -315,6 +319,13 @@ h1 {
 .secondary-action {
   justify-content: center;
   background: #ffffff;
+}
+
+.secondary-action.active-action {
+  border-color: #f97316;
+  background: #fff4e8;
+  color: #9a3412;
+  font-weight: 800;
 }
 
 .hint-block {
