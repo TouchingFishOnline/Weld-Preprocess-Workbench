@@ -39,9 +39,40 @@ const manifest: WorkpieceManifest = {
 };
 
 describe("workbench store", () => {
+  it("starts without sample-specific weld stages", () => {
+    const store = createWorkbenchStore();
+
+    expect(store.getState().stages).toEqual([]);
+    expect(store.getState().activeStageId).toBeNull();
+  });
+
+  it("creates operator-defined weld stages", () => {
+    const store = createWorkbenchStore();
+
+    store.getState().addStage();
+
+    expect(store.getState().stages).toEqual([
+      { id: "stage-01", name: "阶段 1", color: "#2563eb", seamIds: [] }
+    ]);
+    expect(store.getState().activeStageId).toBe("stage-01");
+  });
+
+  it("toggles view lock state", () => {
+    const store = createWorkbenchStore();
+
+    store.getState().toggleViewLocked();
+
+    expect(store.getState().viewLocked).toBe(true);
+
+    store.getState().toggleViewLocked();
+
+    expect(store.getState().viewLocked).toBe(false);
+  });
+
   it("creates a seam from the selected candidates and assigns it to the active stage", () => {
     const store = createWorkbenchStore();
     store.getState().loadWorkpieceManifest(manifest, "/workpieces/wp/manifest.json");
+    store.getState().addStage();
     const firstCandidate = store.getState().candidates[0];
 
     store.getState().toggleCandidate(firstCandidate.id);
@@ -57,10 +88,12 @@ describe("workbench store", () => {
 
   it("switches the active stage", () => {
     const store = createWorkbenchStore();
+    store.getState().addStage();
+    store.getState().addStage();
 
-    store.getState().setActiveStage("stage-right");
+    store.getState().setActiveStage("stage-02");
 
-    expect(store.getState().activeStageId).toBe("stage-right");
+    expect(store.getState().activeStageId).toBe("stage-02");
   });
 
   it("loads candidates from a workpiece manifest", () => {

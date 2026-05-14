@@ -14,6 +14,7 @@ export function ToolPanel() {
   const candidates = useWorkbenchStore((state) => state.candidates);
   const selectedCandidateIds = useWorkbenchStore((state) => state.selectedCandidateIds);
   const sameDiameterSourceId = useWorkbenchStore((state) => state.sameDiameterSourceId);
+  const activeStageId = useWorkbenchStore((state) => state.activeStageId);
   const setTargetShape = useWorkbenchStore((state) => state.setTargetShape);
   const setSameDiameterSource = useWorkbenchStore((state) => state.setSameDiameterSource);
   const confirmSelectionAsSeam = useWorkbenchStore((state) => state.confirmSelectionAsSeam);
@@ -23,6 +24,7 @@ export function ToolPanel() {
   const sameDiameterCount = sameDiameterSourceId
     ? findSameDiameterCandidates(candidates, sameDiameterSourceId).length
     : 0;
+  const canConfirm = selectedCandidateIds.length > 0 && Boolean(activeStageId);
 
   return (
     <aside className="tool-panel">
@@ -63,15 +65,11 @@ export function ToolPanel() {
       </div>
 
       <div className="panel-section action-stack">
-        <button
-          className="primary-action"
-          type="button"
-          disabled={selectedCandidateIds.length === 0}
-          onClick={confirmSelectionAsSeam}
-        >
+        <button className="primary-action" type="button" disabled={!canConfirm} onClick={confirmSelectionAsSeam}>
           <MousePointer2 size={17} />
           确认为焊缝
         </button>
+        {!activeStageId && <p className="empty-note compact-note">请先在右侧新增一个焊接阶段。</p>}
         <button className="secondary-action" type="button" onClick={() => setSameDiameterSource(selectedCandidateIds[0] ?? null)}>
           <Circle size={17} />
           同直径高亮

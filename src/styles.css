@@ -156,6 +156,30 @@ h1 {
   font-size: 15px;
 }
 
+.split-title {
+  justify-content: space-between;
+}
+
+.split-title span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 5px 8px;
+  border: 1px solid #d3dce5;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1f2937;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .segmented {
   display: grid;
   gap: 8px;
@@ -272,6 +296,37 @@ h1 {
   color: #1d4ed8;
 }
 
+.view-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  border: 0;
+  background: transparent;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 650;
+  padding-left: 4px;
+}
+
+.view-lock .checkmark {
+  display: inline-grid;
+  place-items: center;
+  width: 13px;
+  height: 13px;
+  border: 1px solid #94a3b8;
+  border-radius: 3px;
+  background: #ffffff;
+  color: #ffffff;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.view-lock.active .checkmark {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+}
+
 .view-cube {
   position: absolute;
   z-index: 3;
@@ -294,6 +349,11 @@ h1 {
   color: #1f2937;
   font-size: 11px;
   font-weight: 800;
+}
+
+.view-cube button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
 }
 
 .spin {
@@ -399,6 +459,10 @@ h1 {
   color: #64748b;
   font-size: 13px;
   padding: 8px 0;
+}
+
+.compact-note {
+  padding: 0;
 }
 
 .pose-status {

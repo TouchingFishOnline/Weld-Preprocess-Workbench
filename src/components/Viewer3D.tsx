@@ -19,6 +19,7 @@ export function Viewer3D() {
   const [viewPreset, setViewPreset] = useState<ViewPreset>("iso");
   const workpiece = useWorkbenchStore((state) => state.workpiece);
   const workpieceBaseUrl = useWorkbenchStore((state) => state.workpieceBaseUrl);
+  const viewLocked = useWorkbenchStore((state) => state.viewLocked);
   const candidates = useWorkbenchStore((state) => state.candidates);
   const targetShape = useWorkbenchStore((state) => state.targetShape);
   const selectedCandidateIds = useWorkbenchStore((state) => state.selectedCandidateIds);
@@ -45,23 +46,45 @@ export function Viewer3D() {
   const transform = workpiece?.displayTransform ?? null;
   const modelUrl = workpiece && workpieceBaseUrl ? `${workpieceBaseUrl}/${workpiece.modelUrl}` : null;
 
+  useEffect(() => {
+    const toggle = (event: MouseEvent) => {
+      if ((event.target as HTMLElement | null)?.closest(".view-lock")) {
+        event.preventDefault();
+        useWorkbenchStore.getState().toggleViewLocked();
+      }
+    };
+    document.addEventListener("click", toggle, true);
+    return () => document.removeEventListener("click", toggle, true);
+  }, []);
+
   return (
     <section className="viewer-shell">
       <div className="viewer-toolbar">
         <span>3D Workpiece</span>
         <strong>{workpiece ? targetShape.toUpperCase() : "NO STEP"}</strong>
+        {viewLocked ? (
+          <button className="view-lock active" type="button" aria-pressed="true">
+            <span className="checkmark" aria-hidden="true">✓</span>
+            视角锁定
+          </button>
+        ) : (
+          <button className="view-lock" type="button" aria-pressed="false">
+            <span className="checkmark" aria-hidden="true" />
+            视角锁定
+          </button>
+        )}
       </div>
       <div className="view-cube">
-        <button type="button" onClick={() => setViewPreset("top")}>TOP</button>
-        <button type="button" onClick={() => setViewPreset("front")}>FRONT</button>
-        <button type="button" onClick={() => setViewPreset("right")}>RIGHT</button>
-        <button type="button" onClick={() => setViewPreset("iso")}>ISO</button>
+        <button type="button" disabled={viewLocked} onClick={() => setViewPreset("top")}>TOP</button>
+        <button type="button" disabled={viewLocked} onClick={() => setViewPreset("front")}>FRONT</button>
+        <button type="button" disabled={viewLocked} onClick={() => setViewPreset("right")}>RIGHT</button>
+        <button type="button" disabled={viewLocked} onClick={() => setViewPreset("iso")}>ISO</button>
       </div>
-      <Canvas camera={{ position: [10, -15, 8], fov: 38 }} shadows>
+      <Canvas camera={{ position: [10, -15, 8], fov: 38 }} frameloop="demand" dpr={[1, 1.5]} shadows>
         <color attach="background" args={["#eef2f5"]} />
         <ambientLight intensity={0.9} />
         <directionalLight position={[4, -6, 8]} intensity={1.8} castShadow />
-        <ViewController preset={viewPreset} />
+        <ViewController preset={viewPreset} locked={viewLocked} />
         {modelUrl && transform ? <ImportedModel modelUrl={modelUrl} transform={transform} /> : <EmptyScene />}
         {transform &&
           candidates.map((candidate) => (
@@ -84,7 +107,14 @@ export function Viewer3D() {
             <TorchGhost key={`${activeSeamId}-${index}`} pose={pose} transform={transform} index={index} total={poses.length} />
           ))}
         <gridHelper args={[18, 18, "#cbd5df", "#dbe3ea"]} position={[0, 0, -0.42]} />
-        <OrbitControls enableDamping makeDefault maxPolarAngle={Math.PI * 0.78} minDistance={4} maxDistance={28} />
+        <OrbitControls
+          enabled={!viewLocked}
+          enableDamping={!viewLocked}
+          makeDefault
+          maxPolarAngle={Math.PI * 0.78}
+          minDistance={4}
+          maxDistance={28}
+        />
       </Canvas>
     </section>
   );
@@ -136,12 +166,15 @@ function EmptyScene() {
   );
 }
 
-function ViewController({ preset }: { preset: ViewPreset }) {
+function ViewController({ preset, locked }: { preset: ViewPreset; locked: boolean }) {
   const camera = useThree((state) => state.camera);
   const controls = useThree((state) => state.controls) as unknown as
     | { target: THREE.Vector3; update: () => void }
     | undefined;
   useEffect(() => {
+    if (locked) {
+      return;
+    }
     const positions: Record<ViewPreset, [number, number, number]> = {
       iso: [10, -15, 8],
       top: [0, 0, 18],
@@ -154,7 +187,7 @@ function ViewController({ preset }: { preset: ViewPreset }) {
       controls.target.set(0, 0, 0);
       controls.update();
     }
-  }, [camera, controls, preset]);
+  }, [camera, controls, preset, locked]);
   return null;
 }
 
