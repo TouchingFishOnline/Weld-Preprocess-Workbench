@@ -84,7 +84,7 @@ export function Viewer3D() {
         <color attach="background" args={["#eef2f5"]} />
         <ambientLight intensity={0.9} />
         <directionalLight position={[4, -6, 8]} intensity={1.8} castShadow />
-        <ViewController preset={viewPreset} locked={viewLocked} />
+        <ViewController preset={viewPreset} />
         {modelUrl && transform ? <ImportedModel modelUrl={modelUrl} transform={transform} /> : <EmptyScene />}
         {transform &&
           candidates.map((candidate) => (
@@ -166,15 +166,12 @@ function EmptyScene() {
   );
 }
 
-function ViewController({ preset, locked }: { preset: ViewPreset; locked: boolean }) {
+function ViewController({ preset }: { preset: ViewPreset }) {
   const camera = useThree((state) => state.camera);
   const controls = useThree((state) => state.controls) as unknown as
     | { target: THREE.Vector3; update: () => void }
     | undefined;
   useEffect(() => {
-    if (locked) {
-      return;
-    }
     const positions: Record<ViewPreset, [number, number, number]> = {
       iso: [10, -15, 8],
       top: [0, 0, 18],
@@ -187,7 +184,7 @@ function ViewController({ preset, locked }: { preset: ViewPreset; locked: boolea
       controls.target.set(0, 0, 0);
       controls.update();
     }
-  }, [camera, controls, preset, locked]);
+  }, [camera, controls, preset]);
   return null;
 }
 
