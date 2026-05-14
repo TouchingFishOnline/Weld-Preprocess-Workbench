@@ -25,6 +25,7 @@ export interface WorkbenchState {
   workpieceBaseUrl: string | null;
   viewLocked: boolean;
   candidates: GeometryCandidate[];
+  candidateKindFilter: string | null;
   selectedCandidateIds: string[];
   hoverCandidateId: string | null;
   stages: WeldStage[];
@@ -37,6 +38,7 @@ export interface WorkbenchState {
   addStage: () => void;
   toggleViewLocked: () => void;
   setTargetShape: (targetShape: TargetShape) => void;
+  setCandidateKindFilter: (candidateKind: string | null) => void;
   setActiveStage: (stageId: string) => void;
   setHoverCandidate: (candidateId: string | null) => void;
   toggleCandidate: (candidateId: string) => void;
@@ -72,6 +74,7 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
   workpieceBaseUrl: null,
   viewLocked: false,
   candidates: [],
+  candidateKindFilter: null,
   selectedCandidateIds: [],
   hoverCandidateId: null,
   stages: [],
@@ -86,6 +89,7 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
       workpiece: manifest,
       workpieceBaseUrl: baseUrl,
       candidates: manifestToCandidates(manifest),
+      candidateKindFilter: null,
       selectedCandidateIds: [],
       hoverCandidateId: null,
       stages: [],
@@ -116,6 +120,13 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
   setTargetShape: (targetShape) =>
     set({
       targetShape,
+      candidateKindFilter: null,
+      selectedCandidateIds: [],
+      sameDiameterSourceId: null
+    }),
+  setCandidateKindFilter: (candidateKindFilter) =>
+    set({
+      candidateKindFilter,
       selectedCandidateIds: [],
       sameDiameterSourceId: null
     }),
@@ -201,6 +212,7 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
       ...normalizedProject,
       selectedCandidateIds: [],
       hoverCandidateId: null,
+      candidateKindFilter: null,
       sameDiameterSourceId: null
     });
 

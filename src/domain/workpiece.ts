@@ -29,7 +29,8 @@ export function edgeToCandidate(edge: WorkpieceEdge): GeometryCandidate | null {
       startAngleRad: 0,
       endAngleRad: Math.PI * 2,
       closed: edge.closed,
-      polyline: edge.polyline
+      polyline: edge.polyline,
+      adjacentFaceIds: edge.adjacentFaceIds
     };
   }
 
@@ -40,7 +41,8 @@ export function edgeToCandidate(edge: WorkpieceEdge): GeometryCandidate | null {
       kind: "line",
       label: edge.id,
       points: edge.polyline,
-      closed: edge.closed
+      closed: edge.closed,
+      adjacentFaceIds: edge.adjacentFaceIds
     };
   }
 
@@ -52,6 +54,21 @@ export function manifestEdgesToCandidates(edges: WorkpieceEdge[]): GeometryCandi
 }
 
 export function semanticSeamCandidateToCandidate(candidate: WorkpieceSeamCandidate): GeometryCandidate {
+  if (candidate.shape === "edge") {
+    return {
+      id: candidate.id,
+      shape: "edge",
+      kind: "line",
+      label: candidate.label,
+      points: candidate.points,
+      closed: candidate.closed,
+      semanticKind: candidate.kind,
+      confidence: candidate.confidence,
+      adjacentFaceIds: candidate.adjacentFaceIds,
+      frame: candidate.frame
+    };
+  }
+
   return {
     id: candidate.id,
     shape: "circle",
@@ -63,7 +80,11 @@ export function semanticSeamCandidateToCandidate(candidate: WorkpieceSeamCandida
     startAngleRad: 0,
     endAngleRad: Math.PI * 2,
     closed: candidate.closed,
-    polyline: candidate.polyline
+    polyline: candidate.polyline,
+    semanticKind: candidate.kind,
+    confidence: candidate.confidence,
+    adjacentFaceIds: candidate.adjacentFaceIds,
+    frame: candidate.frame
   };
 }
 

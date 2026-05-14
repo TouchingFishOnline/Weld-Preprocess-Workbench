@@ -2,7 +2,7 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { Line, OrbitControls, Text, useGLTF } from "@react-three/drei";
 import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
-import { filterCandidatesByTargetShape, findSameDiameterCandidates, sampleSegmentPath } from "../domain/geometry";
+import { filterCandidatesForWorkbench, findSameDiameterCandidates, sampleSegmentPath } from "../domain/geometry";
 import { sampleTorchPoses } from "../domain/pose";
 import type { GeometryCandidate, Vec3, WeldSeam } from "../domain/types";
 import { transformDirection, transformPoint } from "../domain/workpiece";
@@ -22,6 +22,7 @@ export function Viewer3D() {
   const viewLocked = useWorkbenchStore((state) => state.viewLocked);
   const candidates = useWorkbenchStore((state) => state.candidates);
   const targetShape = useWorkbenchStore((state) => state.targetShape);
+  const candidateKindFilter = useWorkbenchStore((state) => state.candidateKindFilter);
   const selectedCandidateIds = useWorkbenchStore((state) => state.selectedCandidateIds);
   const hoverCandidateId = useWorkbenchStore((state) => state.hoverCandidateId);
   const sameDiameterSourceId = useWorkbenchStore((state) => state.sameDiameterSourceId);
@@ -29,8 +30,9 @@ export function Viewer3D() {
   const activeSeamId = useWorkbenchStore((state) => state.activeSeamId);
   const poseDefinition = useWorkbenchStore((state) => state.poseDefinition);
   const visibleCandidates = useMemo(
-    () => new Set(filterCandidatesByTargetShape(candidates, targetShape).map((candidate) => candidate.id)),
-    [candidates, targetShape]
+    () =>
+      new Set(filterCandidatesForWorkbench(candidates, targetShape, candidateKindFilter).map((candidate) => candidate.id)),
+    [candidateKindFilter, candidates, targetShape]
   );
   const sameDiameterIds = useMemo(
     () =>

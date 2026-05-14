@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSeamFromCandidates,
+  filterCandidatesForWorkbench,
   findSameDiameterCandidates,
   filterCandidatesByTargetShape
 } from "./geometry";
@@ -57,6 +58,21 @@ describe("filterCandidatesByTargetShape", () => {
     const result = filterCandidatesByTargetShape(candidates, "edge");
 
     expect(result).toHaveLength(3);
+  });
+
+  it("filters visible candidates by semantic recommendation kind after target shape", () => {
+    const semanticCandidates: GeometryCandidate[] = [
+      { ...candidates[0], semanticKind: "nozzle-root-circular" },
+      { ...candidates[1], semanticKind: "end-cap-circular" },
+      { ...candidates[2], semanticKind: "linear-body-seam" }
+    ];
+
+    expect(filterCandidatesForWorkbench(semanticCandidates, "circle", "end-cap-circular").map((candidate) => candidate.id)).toEqual([
+      "circle-b"
+    ]);
+    expect(filterCandidatesForWorkbench(semanticCandidates, "edge", "linear-body-seam").map((candidate) => candidate.id)).toEqual([
+      "rect-a"
+    ]);
   });
 });
 

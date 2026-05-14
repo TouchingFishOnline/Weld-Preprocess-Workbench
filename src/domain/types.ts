@@ -4,8 +4,22 @@ export type TargetShape = "circle" | "rectangle" | "edge";
 
 export type TravelDirection = "forward" | "reverse";
 
-export type GeometryCandidate =
-  | {
+export interface CandidateLocalFrame {
+  tangent: Vec3;
+  referenceNormal: Vec3;
+  adjacentNormals: Vec3[];
+}
+
+export type GeometryCandidateMetadata = {
+  semanticKind?: string;
+  confidence?: number;
+  adjacentFaceIds?: string[];
+  frame?: CandidateLocalFrame;
+};
+
+export type GeometryCandidate = GeometryCandidateMetadata &
+  (
+    | {
       id: string;
       shape: "circle";
       kind: "circle" | "arc";
@@ -18,7 +32,7 @@ export type GeometryCandidate =
       closed: boolean;
       polyline?: Vec3[];
     }
-  | {
+    | {
       id: string;
       shape: "rectangle";
       kind: "polyline";
@@ -26,14 +40,15 @@ export type GeometryCandidate =
       points: Vec3[];
       closed: boolean;
     }
-  | {
+    | {
       id: string;
       shape: "edge";
       kind: "line";
       label: string;
       points: Vec3[];
       closed: boolean;
-    };
+    }
+  );
 
 export type WeldSeamSegment =
   | {

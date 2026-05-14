@@ -10,6 +10,18 @@ export function filterCandidatesByTargetShape(
   return candidates.filter((candidate) => candidate.shape === targetShape);
 }
 
+export function filterCandidatesForWorkbench(
+  candidates: GeometryCandidate[],
+  targetShape: TargetShape,
+  semanticKind: string | null
+): GeometryCandidate[] {
+  const shapeCandidates = filterCandidatesByTargetShape(candidates, targetShape);
+  if (!semanticKind) {
+    return shapeCandidates;
+  }
+  return shapeCandidates.filter((candidate) => candidate.semanticKind === semanticKind);
+}
+
 export function findSameDiameterCandidates(
   candidates: GeometryCandidate[],
   sourceId: string,

@@ -1,5 +1,5 @@
 import { Circle, CornerDownRight, MousePointer2, RotateCcw, ScanSearch } from "lucide-react";
-import { findSameDiameterCandidates, filterCandidatesByTargetShape } from "../domain/geometry";
+import { filterCandidatesForWorkbench, findSameDiameterCandidates } from "../domain/geometry";
 import type { TargetShape } from "../domain/types";
 import { useWorkbenchStore } from "../state/workbenchStore";
 
@@ -12,15 +12,24 @@ const tools: Array<{ id: TargetShape; label: string; icon: typeof Circle }> = [
 export function ToolPanel() {
   const targetShape = useWorkbenchStore((state) => state.targetShape);
   const candidates = useWorkbenchStore((state) => state.candidates);
+  const candidateKindFilter = useWorkbenchStore((state) => state.candidateKindFilter);
   const selectedCandidateIds = useWorkbenchStore((state) => state.selectedCandidateIds);
   const sameDiameterSourceId = useWorkbenchStore((state) => state.sameDiameterSourceId);
   const activeStageId = useWorkbenchStore((state) => state.activeStageId);
   const setTargetShape = useWorkbenchStore((state) => state.setTargetShape);
+  const setCandidateKindFilter = useWorkbenchStore((state) => state.setCandidateKindFilter);
   const setSameDiameterSource = useWorkbenchStore((state) => state.setSameDiameterSource);
   const confirmSelectionAsSeam = useWorkbenchStore((state) => state.confirmSelectionAsSeam);
   const clearSelection = useWorkbenchStore((state) => state.clearSelection);
 
-  const visibleCount = filterCandidatesByTargetShape(candidates, targetShape).length;
+  const shapeCandidates = filterCandidatesForWorkbench(candidates, targetShape, null);
+  const kindCounts = shapeCandidates.reduce<Record<string, number>>((counts, candidate) => {
+    if (candidate.semanticKind) {
+      counts[candidate.semanticKind] = (counts[candidate.semanticKind] ?? 0) + 1;
+    }
+    return counts;
+  }, {});
+  const visibleCount = filterCandidatesForWorkbench(candidates, targetShape, candidateKindFilter).length;
   const sameDiameterCount = sameDiameterSourceId
     ? findSameDiameterCandidates(candidates, sameDiameterSourceId).length
     : 0;
@@ -48,6 +57,33 @@ export function ToolPanel() {
           })}
         </div>
       </div>
+
+      {Object.keys(kindCounts).length > 0 && (
+        <div className="panel-section">
+          <p className="panel-label">推荐候选</p>
+          <div className="candidate-kind-list">
+            <button
+              type="button"
+              className={candidateKindFilter === null ? "active" : ""}
+              onClick={() => setCandidateKindFilter(null)}
+            >
+              <span>全部推荐</span>
+              <strong>{shapeCandidates.filter((candidate) => candidate.semanticKind).length}</strong>
+            </button>
+            {Object.entries(kindCounts).map(([kind, count]) => (
+              <button
+                key={kind}
+                type="button"
+                className={candidateKindFilter === kind ? "active" : ""}
+                onClick={() => setCandidateKindFilter(kind)}
+              >
+                <span>{candidateKindLabel(kind)}</span>
+                <strong>{count}</strong>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="panel-section stats">
         <div>
@@ -85,5 +121,18 @@ export function ToolPanel() {
         <p>鼠标靠近候选边时高亮，点击加入当前焊缝。圆弧可以逐段组合；同直径只做高亮辅助，不自动确认。</p>
       </div>
     </aside>
+  );
+}
+
+function candidateKindLabel(kind: string): string {
+  return (
+    {
+      "nozzle-root-circular": "水嘴根部",
+      "end-cap-circular": "端部圆焊",
+      "side-fitting-circular": "侧向圆焊",
+      "backside-nozzle-circular": "背面圆焊",
+      "linear-body-seam": "直线候选",
+      "unknown-round-edge-group": "其他圆边"
+    }[kind] ?? kind
   );
 }

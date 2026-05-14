@@ -23,6 +23,7 @@ export interface WorkpieceEdge {
   diameterMm?: number;
   center?: Vec3;
   normal?: Vec3;
+  adjacentFaceIds?: string[];
 }
 
 export interface WorkpieceFace {
@@ -32,14 +33,36 @@ export interface WorkpieceFace {
   center: Vec3;
   bbox: WorkpieceBbox;
   surfaceType: number;
+  normal?: Vec3;
+  axis?: Vec3;
+  radiusMm?: number;
+  referenceRadiusMm?: number;
+  semiAngleRad?: number;
+  majorRadiusMm?: number;
+  minorRadiusMm?: number;
 }
 
-export interface WorkpieceSeamCandidate {
+export interface WorkpieceCandidateFrame {
+  tangent: Vec3;
+  referenceNormal: Vec3;
+  adjacentNormals: Vec3[];
+}
+
+export type WorkpieceSeamCandidate =
+  | {
   id: string;
-  kind: "nozzle-root-circular" | string;
+      kind:
+        | "nozzle-root-circular"
+        | "end-cap-circular"
+        | "side-fitting-circular"
+        | "backside-nozzle-circular"
+        | "unknown-round-edge-group"
+        | string;
   shape: "circle";
   label: string;
   sourceEdgeIds: string[];
+      adjacentFaceIds?: string[];
+      adjacentFaceTypes?: string[];
   radiusMm: number;
   diameterMm: number;
   center: Vec3;
@@ -47,7 +70,21 @@ export interface WorkpieceSeamCandidate {
   closed: boolean;
   confidence: number;
   polyline: Vec3[];
-}
+      frame?: WorkpieceCandidateFrame;
+    }
+  | {
+      id: string;
+      kind: "linear-body-seam" | string;
+      shape: "edge";
+      label: string;
+      sourceEdgeIds: string[];
+      adjacentFaceIds?: string[];
+      adjacentFaceTypes?: string[];
+      closed: boolean;
+      confidence: number;
+      points: Vec3[];
+      frame?: WorkpieceCandidateFrame;
+    };
 
 export interface WorkpieceManifest {
   id: string;

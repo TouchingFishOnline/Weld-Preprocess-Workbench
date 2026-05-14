@@ -25,6 +25,22 @@ class PreprocessStepTest(unittest.TestCase):
             self.assertIn("displayTransform", saved_manifest)
             self.assertIn("bbox", saved_manifest)
 
+            self.assertTrue(any(len(edge.get("adjacentFaceIds", [])) >= 1 for edge in saved_manifest["edges"]))
+            self.assertTrue(any(len(edge.get("adjacentFaceIds", [])) >= 2 for edge in saved_manifest["edges"]))
+
+            plane_faces = [face for face in saved_manifest["faces"] if face["type"] == "plane"]
+            cylinder_faces = [face for face in saved_manifest["faces"] if face["type"] == "cylinder"]
+            cone_faces = [face for face in saved_manifest["faces"] if face["type"] == "cone"]
+            torus_faces = [face for face in saved_manifest["faces"] if face["type"] == "torus"]
+            self.assertTrue(plane_faces)
+            self.assertTrue(cylinder_faces)
+            self.assertTrue(cone_faces)
+            self.assertTrue(torus_faces)
+            self.assertTrue(all("normal" in face for face in plane_faces[:5]))
+            self.assertTrue(all("axis" in face and "radiusMm" in face for face in cylinder_faces[:5]))
+            self.assertTrue(all("axis" in face for face in cone_faces[:5]))
+            self.assertTrue(all("axis" in face and "majorRadiusMm" in face for face in torus_faces[:5]))
+
             circular_edges = [edge for edge in saved_manifest["edges"] if edge["type"] == "circle"]
             self.assertGreaterEqual(len(circular_edges), 30)
             self.assertTrue(any(abs(edge["radiusMm"] - 12.5) < 0.1 for edge in circular_edges))
@@ -44,6 +60,17 @@ class PreprocessStepTest(unittest.TestCase):
             self.assertTrue(all(candidate["closed"] for candidate in nozzle_root_candidates))
             self.assertTrue(any(abs(candidate["diameterMm"] - 22.5) < 0.2 for candidate in nozzle_root_candidates))
             self.assertTrue(all(len(candidate["polyline"]) >= 32 for candidate in nozzle_root_candidates[:5]))
+
+            candidate_kinds = {candidate["kind"] for candidate in seam_candidates}
+            self.assertIn("nozzle-root-circular", candidate_kinds)
+            self.assertIn("side-fitting-circular", candidate_kinds)
+            self.assertIn("end-cap-circular", candidate_kinds)
+            self.assertIn("unknown-round-edge-group", candidate_kinds)
+            self.assertTrue(all(candidate.get("adjacentFaceIds") for candidate in seam_candidates[:20]))
+            self.assertTrue(all("frame" in candidate for candidate in seam_candidates[:20]))
+            self.assertTrue(all("tangent" in candidate["frame"] for candidate in seam_candidates[:20]))
+            self.assertTrue(all("referenceNormal" in candidate["frame"] for candidate in seam_candidates[:20]))
+            self.assertTrue(all("adjacentNormals" in candidate["frame"] for candidate in seam_candidates[:20]))
 
     def test_can_skip_semantic_seam_candidate_generation(self):
         source = Path(__file__).resolve().parents[2] / "manifold-combined.STEP"

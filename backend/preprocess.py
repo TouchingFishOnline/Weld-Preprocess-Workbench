@@ -9,7 +9,10 @@ from typing import Any
 
 import cadquery as cq
 from OCP.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
-from OCP.GeomAbs import GeomAbs_Circle, GeomAbs_Line
+from OCP.GeomAbs import GeomAbs_Circle, GeomAbs_Cone, GeomAbs_Cylinder, GeomAbs_Line, GeomAbs_Plane, GeomAbs_Torus
+from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE
+from OCP.TopExp import TopExp
+from OCP.TopTools import TopTools_IndexedDataMapOfShapeListOfShape
 
 
 def preprocess_step(
@@ -40,8 +43,9 @@ def preprocess_step(
     shutil.copyfile(source_path, step_copy_path)
 
     bbox = _bbox(shape)
-    edges = _extract_edges(shape)
-    faces = _extract_faces(shape)
+    face_shapes = shape.Faces()
+    faces = _extract_faces(face_shapes)
+    edges = _extract_edges(shape, face_shapes)
     manifest: dict[str, Any] = {
         "id": resolved_id,
         "sourceFile": source_path.name,
@@ -56,7 +60,7 @@ def preprocess_step(
     }
 
     if include_seam_candidates:
-        seam_candidates = _build_semantic_seam_candidates(edges, bbox)
+        seam_candidates = _build_semantic_seam_candidates(edges, faces, bbox)
         manifest["seamCandidateUrl"] = "seam-candidates.json"
         manifest["seamCandidates"] = seam_candidates
         (target_dir / "seam-candidates.json").write_text(
@@ -110,14 +114,16 @@ def _display_transform(bbox: dict[str, list[float]]) -> dict[str, Any]:
     return {"center": scene_center, "scale": scale, "cadToScene": "x,z,-y"}
 
 
-def _extract_edges(shape: cq.Shape) -> list[dict[str, Any]]:
+def _extract_edges(shape: cq.Shape, face_shapes: list[cq.Face]) -> list[dict[str, Any]]:
     edges: list[dict[str, Any]] = []
+    edge_face_map = _edge_face_ancestor_map(shape)
 
     for index, edge in enumerate(shape.Edges()):
         geom_type = edge.geomType()
         if geom_type not in {"CIRCLE", "LINE"}:
             continue
 
+        adjacent_face_ids = _adjacent_face_ids(edge, face_shapes, edge_face_map)
         adaptor = BRepAdaptor_Curve(edge.wrapped)
         if adaptor.GetType() == GeomAbs_Circle:
             circle = adaptor.Circle()
@@ -136,6 +142,7 @@ def _extract_edges(shape: cq.Shape) -> list[dict[str, Any]]:
                     "normal": normal,
                     "lengthMm": float(edge.Length()),
                     "polyline": polyline,
+                    "adjacentFaceIds": adjacent_face_ids,
                 }
             )
         elif adaptor.GetType() == GeomAbs_Line:
@@ -147,30 +154,98 @@ def _extract_edges(shape: cq.Shape) -> list[dict[str, Any]]:
                     "closed": bool(edge.IsClosed()),
                     "lengthMm": float(edge.Length()),
                     "polyline": polyline,
+                    "adjacentFaceIds": adjacent_face_ids,
                 }
             )
 
     return edges
 
 
-def _extract_faces(shape: cq.Shape) -> list[dict[str, Any]]:
+def _edge_face_ancestor_map(shape: cq.Shape) -> Any:
+    edge_face_map = TopTools_IndexedDataMapOfShapeListOfShape()
+    TopExp.MapShapesAndAncestors_s(shape.wrapped, TopAbs_EDGE, TopAbs_FACE, edge_face_map)
+    return edge_face_map
+
+
+def _adjacent_face_ids(edge: cq.Edge, face_shapes: list[cq.Face], edge_face_map: Any) -> list[str]:
+    try:
+        ancestors = edge_face_map.FindFromKey(edge.wrapped)
+    except Exception:
+        return []
+
+    adjacent_ids: list[str] = []
+    for ancestor in ancestors:
+        for index, face in enumerate(face_shapes):
+            if ancestor.IsSame(face.wrapped):
+                face_id = f"face_{index:05d}"
+                if face_id not in adjacent_ids:
+                    adjacent_ids.append(face_id)
+                break
+    return adjacent_ids
+
+
+def _extract_faces(face_shapes: list[cq.Face]) -> list[dict[str, Any]]:
     faces: list[dict[str, Any]] = []
-    for index, face in enumerate(shape.Faces()):
+    for index, face in enumerate(face_shapes):
         adaptor = BRepAdaptor_Surface(face.wrapped)
-        faces.append(
-            {
-                "id": f"face_{index:05d}",
-                "type": face.geomType().lower(),
-                "areaMm2": float(face.Area()),
-                "center": _vector(face.Center()),
-                "bbox": _bbox(face),
-                "surfaceType": int(adaptor.GetType()),
-            }
-        )
+        record = {
+            "id": f"face_{index:05d}",
+            "type": face.geomType().lower(),
+            "areaMm2": float(face.Area()),
+            "center": _vector(face.Center()),
+            "bbox": _bbox(face),
+            "surfaceType": int(adaptor.GetType()),
+        }
+        record.update(_surface_metadata(adaptor))
+        faces.append(record)
     return faces
 
 
-def _build_semantic_seam_candidates(edges: list[dict[str, Any]], bbox: dict[str, list[float]]) -> list[dict[str, Any]]:
+def _surface_metadata(adaptor: BRepAdaptor_Surface) -> dict[str, Any]:
+    surface_type = adaptor.GetType()
+    if surface_type == GeomAbs_Plane:
+        plane = adaptor.Plane()
+        return {"normal": _direction(plane.Axis().Direction())}
+    if surface_type == GeomAbs_Cylinder:
+        cylinder = adaptor.Cylinder()
+        return {"axis": _direction(cylinder.Axis().Direction()), "radiusMm": float(cylinder.Radius())}
+    if surface_type == GeomAbs_Cone:
+        cone = adaptor.Cone()
+        return {
+            "axis": _direction(cone.Axis().Direction()),
+            "referenceRadiusMm": float(cone.RefRadius()),
+            "semiAngleRad": float(cone.SemiAngle()),
+        }
+    if surface_type == GeomAbs_Torus:
+        torus = adaptor.Torus()
+        return {
+            "axis": _direction(torus.Axis().Direction()),
+            "majorRadiusMm": float(torus.MajorRadius()),
+            "minorRadiusMm": float(torus.MinorRadius()),
+        }
+    return {}
+
+
+def _build_semantic_seam_candidates(
+    edges: list[dict[str, Any]], faces: list[dict[str, Any]], bbox: dict[str, list[float]]
+) -> list[dict[str, Any]]:
+    face_lookup = {face["id"]: face for face in faces}
+    candidates: list[dict[str, Any]] = []
+    used_edge_ids: set[str] = set()
+    candidates.extend(_build_nozzle_root_candidates(edges, face_lookup, bbox, used_edge_ids))
+    candidates.extend(_build_round_topology_candidates(edges, face_lookup, bbox, used_edge_ids))
+    candidates.extend(_build_linear_body_candidates(edges, face_lookup, bbox, used_edge_ids))
+    for index, candidate in enumerate(candidates, start=1):
+        candidate["id"] = f"seam_candidate_{index:03d}"
+    return candidates
+
+
+def _build_nozzle_root_candidates(
+    edges: list[dict[str, Any]],
+    face_lookup: dict[str, dict[str, Any]],
+    bbox: dict[str, list[float]],
+    used_edge_ids: set[str],
+) -> list[dict[str, Any]]:
     top_z_threshold = bbox["min"][2] + bbox["size"][2] * 0.62
     nozzle_groups: dict[tuple[int, int], list[dict[str, Any]]] = {}
 
@@ -215,25 +290,221 @@ def _build_semantic_seam_candidates(edges: list[dict[str, Any]], bbox: dict[str,
         if diameter < 18.0 or diameter > 36.0:
             continue
 
-        candidate_index = len(candidates) + 1
+        adjacent_face_ids = _merged_adjacent_face_ids(root_ring)
+        polyline = _sample_horizontal_circle(center, radius, samples=72)
+        normal = [0.0, 0.0, 1.0 if representative["normal"][2] >= 0 else -1.0]
+        used_edge_ids.update(edge["id"] for edge in root_ring)
         candidates.append(
             {
-                "id": f"seam_candidate_{candidate_index:03d}",
+                "id": "",
                 "kind": "nozzle-root-circular",
                 "shape": "circle",
-                "label": f"Nozzle root {candidate_index:02d}",
+                "label": f"Nozzle root {len(candidates) + 1:02d}",
                 "sourceEdgeIds": [edge["id"] for edge in root_ring],
+                "adjacentFaceIds": adjacent_face_ids,
+                "adjacentFaceTypes": _adjacent_face_types(adjacent_face_ids, face_lookup),
                 "radiusMm": radius,
                 "diameterMm": diameter,
                 "center": center,
-                "normal": [0.0, 0.0, 1.0 if representative["normal"][2] >= 0 else -1.0],
+                "normal": normal,
                 "closed": True,
                 "confidence": 0.82,
-                "polyline": _sample_horizontal_circle(center, radius, samples=72),
+                "polyline": polyline,
+                "frame": _local_frame(polyline, normal, adjacent_face_ids, face_lookup),
             }
         )
 
     return candidates
+
+
+def _build_round_topology_candidates(
+    edges: list[dict[str, Any]],
+    face_lookup: dict[str, dict[str, Any]],
+    bbox: dict[str, list[float]],
+    used_edge_ids: set[str],
+) -> list[dict[str, Any]]:
+    groups: dict[tuple[int, int, int, int], list[dict[str, Any]]] = {}
+    for edge in edges:
+        if edge["id"] in used_edge_ids:
+            continue
+        if edge["type"] != "circle" or not edge.get("center") or not edge.get("normal"):
+            continue
+        diameter = float(edge.get("diameterMm") or 0.0)
+        length = float(edge.get("lengthMm") or 0.0)
+        if diameter < 8.0 or diameter > 130.0 or length < 4.0:
+            continue
+        center = edge["center"]
+        key = (round(center[0] * 4), round(center[1] * 4), round(center[2] * 4), round(diameter * 4))
+        groups.setdefault(key, []).append(edge)
+
+    candidates: list[dict[str, Any]] = []
+    unknown_count = 0
+    for group in sorted(groups.values(), key=lambda items: (-_round_candidate_score(items[0], bbox), items[0]["center"][1], items[0]["center"][2])):
+        representative = max(group, key=lambda edge: edge["lengthMm"])
+        kind = _classify_round_candidate(representative, group, face_lookup, bbox)
+        if not kind:
+            continue
+        if kind == "unknown-round-edge-group":
+            unknown_count += 1
+            if unknown_count > 48:
+                continue
+
+        adjacent_face_ids = _merged_adjacent_face_ids(group)
+        normal = _normalized(representative["normal"])
+        polyline = representative["polyline"]
+        used_edge_ids.update(edge["id"] for edge in group)
+        label_prefix = {
+            "end-cap-circular": "End cap",
+            "side-fitting-circular": "Side fitting",
+            "backside-nozzle-circular": "Backside round",
+            "unknown-round-edge-group": "Round candidate",
+        }[kind]
+        candidates.append(
+            {
+                "id": "",
+                "kind": kind,
+                "shape": "circle",
+                "label": f"{label_prefix} {len(candidates) + 1:02d}",
+                "sourceEdgeIds": [edge["id"] for edge in group],
+                "adjacentFaceIds": adjacent_face_ids,
+                "adjacentFaceTypes": _adjacent_face_types(adjacent_face_ids, face_lookup),
+                "radiusMm": float(representative["radiusMm"]),
+                "diameterMm": float(representative["diameterMm"]),
+                "center": representative["center"],
+                "normal": normal,
+                "closed": bool(representative["closed"]),
+                "confidence": _round_candidate_confidence(kind),
+                "polyline": polyline,
+                "frame": _local_frame(polyline, normal, adjacent_face_ids, face_lookup),
+            }
+        )
+
+    return candidates
+
+
+def _build_linear_body_candidates(
+    edges: list[dict[str, Any]],
+    face_lookup: dict[str, dict[str, Any]],
+    bbox: dict[str, list[float]],
+    used_edge_ids: set[str],
+) -> list[dict[str, Any]]:
+    min_length = max(bbox["size"]) * 0.35
+    line_edges = [
+        edge
+        for edge in edges
+        if edge["id"] not in used_edge_ids and edge["type"] == "line" and float(edge.get("lengthMm") or 0.0) >= min_length
+    ]
+    candidates: list[dict[str, Any]] = []
+    for edge in sorted(line_edges, key=lambda item: -item["lengthMm"])[:8]:
+        adjacent_face_ids = edge.get("adjacentFaceIds", [])
+        points = edge["polyline"]
+        used_edge_ids.add(edge["id"])
+        candidates.append(
+            {
+                "id": "",
+                "kind": "linear-body-seam",
+                "shape": "edge",
+                "label": f"Linear body {len(candidates) + 1:02d}",
+                "sourceEdgeIds": [edge["id"]],
+                "adjacentFaceIds": adjacent_face_ids,
+                "adjacentFaceTypes": _adjacent_face_types(adjacent_face_ids, face_lookup),
+                "closed": False,
+                "confidence": 0.46,
+                "points": points,
+                "frame": _local_frame(points, None, adjacent_face_ids, face_lookup),
+            }
+        )
+    return candidates
+
+
+def _classify_round_candidate(
+    representative: dict[str, Any],
+    group: list[dict[str, Any]],
+    face_lookup: dict[str, dict[str, Any]],
+    bbox: dict[str, list[float]],
+) -> str | None:
+    center = representative["center"]
+    normal = _normalized(representative["normal"])
+    diameter = float(representative.get("diameterMm") or 0.0)
+    adjacent_face_ids = _merged_adjacent_face_ids(group)
+    face_types = set(_adjacent_face_types(adjacent_face_ids, face_lookup))
+    y_span = bbox["size"][1]
+    z_span = bbox["size"][2]
+    near_y_end = center[1] <= bbox["min"][1] + y_span * 0.08 or center[1] >= bbox["max"][1] - y_span * 0.08
+    lower_side = center[2] <= bbox["min"][2] + z_span * 0.38
+
+    if near_y_end and abs(normal[1]) > 0.88 and diameter >= 14.0:
+        return "end-cap-circular"
+    if lower_side and abs(normal[2]) > 0.75 and 12.0 <= diameter <= 42.0 and {"cylinder", "plane"} <= face_types:
+        return "backside-nozzle-circular"
+    if abs(normal[2]) < 0.88 and diameter >= 20.0 and ("cylinder" in face_types or "cone" in face_types):
+        return "side-fitting-circular"
+    if 10.0 <= diameter <= 80.0 and bool(face_types & {"cylinder", "cone", "torus"}):
+        return "unknown-round-edge-group"
+    return None
+
+
+def _round_candidate_score(edge: dict[str, Any], bbox: dict[str, list[float]]) -> float:
+    center = edge["center"]
+    normal = _normalized(edge["normal"])
+    diameter = float(edge.get("diameterMm") or 0.0)
+    y_span = bbox["size"][1]
+    near_y_end_score = min(abs(center[1] - bbox["min"][1]), abs(center[1] - bbox["max"][1])) / max(y_span, 1.0)
+    return diameter + abs(normal[1]) * 20.0 + (1.0 - near_y_end_score) * 10.0
+
+
+def _round_candidate_confidence(kind: str) -> float:
+    return {
+        "end-cap-circular": 0.74,
+        "side-fitting-circular": 0.68,
+        "backside-nozzle-circular": 0.64,
+        "unknown-round-edge-group": 0.38,
+    }[kind]
+
+
+def _merged_adjacent_face_ids(edges: list[dict[str, Any]]) -> list[str]:
+    face_ids: list[str] = []
+    for edge in edges:
+        for face_id in edge.get("adjacentFaceIds", []):
+            if face_id not in face_ids:
+                face_ids.append(face_id)
+    return face_ids
+
+
+def _adjacent_face_types(face_ids: list[str], face_lookup: dict[str, dict[str, Any]]) -> list[str]:
+    face_types: list[str] = []
+    for face_id in face_ids:
+        face_type = face_lookup.get(face_id, {}).get("type")
+        if face_type and face_type not in face_types:
+            face_types.append(face_type)
+    return face_types
+
+
+def _local_frame(
+    polyline: list[list[float]],
+    normal: list[float] | None,
+    adjacent_face_ids: list[str],
+    face_lookup: dict[str, dict[str, Any]],
+) -> dict[str, list[float] | list[list[float]]]:
+    tangent = _polyline_tangent(polyline)
+    adjacent_normals = [
+        _normalized(vector)
+        for vector in (_face_orientation_vector(face_lookup[face_id]) for face_id in adjacent_face_ids if face_id in face_lookup)
+        if vector is not None
+    ]
+    reference_normal = _normalized(normal or (adjacent_normals[0] if adjacent_normals else [0.0, 0.0, 1.0]))
+    return {"tangent": tangent, "referenceNormal": reference_normal, "adjacentNormals": adjacent_normals}
+
+
+def _face_orientation_vector(face: dict[str, Any]) -> list[float] | None:
+    vector = face.get("normal") or face.get("axis")
+    return vector if isinstance(vector, list) and len(vector) == 3 else None
+
+
+def _polyline_tangent(polyline: list[list[float]]) -> list[float]:
+    if len(polyline) < 2:
+        return [1.0, 0.0, 0.0]
+    return _normalized(_subtract(polyline[1], polyline[0]))
 
 
 def average(values: Any) -> float:
@@ -271,6 +542,17 @@ def _point(point: Any) -> list[float]:
 
 def _direction(direction: Any) -> list[float]:
     return [float(direction.X()), float(direction.Y()), float(direction.Z())]
+
+
+def _subtract(end: list[float], start: list[float]) -> list[float]:
+    return [end[index] - start[index] for index in range(3)]
+
+
+def _normalized(vector: list[float]) -> list[float]:
+    length = math.sqrt(sum(component * component for component in vector))
+    if length <= 1e-9:
+        return [0.0, 0.0, 1.0]
+    return [component / length for component in vector]
 
 
 def _vector(vector: Any) -> list[float]:
