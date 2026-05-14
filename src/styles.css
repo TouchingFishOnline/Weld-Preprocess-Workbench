@@ -367,6 +367,18 @@ h1 {
   color: #1d4ed8;
 }
 
+.viewer-toolbar .pan-help {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: #eef4f8;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .view-lock {
   display: inline-flex;
   align-items: center;

@@ -112,7 +112,16 @@ export function ToolPanel() {
           className={candidateGroupHighlighted ? "secondary-action active-action" : "secondary-action"}
           type="button"
           disabled={visibleCount === 0}
-          onClick={toggleCandidateGroupHighlight}
+          onPointerDown={(event) => {
+            event.preventDefault();
+            toggleCandidateGroupHighlight();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === " " || event.key === "Enter") {
+              event.preventDefault();
+              toggleCandidateGroupHighlight();
+            }
+          }}
         >
           <SearchCheck size={17} />
           高亮当前组

@@ -1,5 +1,5 @@
 import { Canvas, useThree } from "@react-three/fiber";
-import { Line, OrbitControls, Text, useGLTF } from "@react-three/drei";
+import { ContactShadows, Line, OrbitControls, Text, useGLTF } from "@react-three/drei";
 import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import { filterCandidatesForWorkbench, findSameDiameterCandidates, sampleSegmentPath } from "../domain/geometry";
@@ -65,6 +65,7 @@ export function Viewer3D() {
       <div className="viewer-toolbar">
         <span>3D Workpiece</span>
         <strong>{workpiece ? targetShape.toUpperCase() : "NO STEP"}</strong>
+        <span className="pan-help" title="左键旋转，右键拖拽平移，滚轮缩放">PAN</span>
         {viewLocked ? (
           <button className="view-lock active" type="button" aria-pressed="true">
             <span className="checkmark" aria-hidden="true">✓</span>
@@ -110,11 +111,18 @@ export function Viewer3D() {
           poses.map((pose, index) => (
             <TorchGhost key={`${activeSeamId}-${index}`} pose={pose} transform={transform} index={index} total={poses.length} />
           ))}
+        <ContactShadows position={[0, -0.38, 0]} scale={20} opacity={0.24} blur={2.4} far={6} />
         <gridHelper args={[18, 18, "#cbd5df", "#dbe3ea"]} position={[0, 0, -0.42]} />
         <OrbitControls
           enabled={!viewLocked}
+          enablePan
           enableDamping={!viewLocked}
           makeDefault
+          mouseButtons={{
+            LEFT: THREE.MOUSE.ROTATE,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.PAN
+          }}
           maxPolarAngle={Math.PI * 0.78}
           minDistance={4}
           maxDistance={28}
@@ -260,6 +268,8 @@ function CandidateOverlay({
       lineWidth={selected || hovered ? 4 : emphasized ? 5 : 2}
       transparent
       opacity={opacity}
+      depthTest={false}
+      renderOrder={12}
       onPointerEnter={(event) => {
         event.stopPropagation();
         setHoverCandidate(candidate.id);

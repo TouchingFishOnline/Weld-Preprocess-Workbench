@@ -44,6 +44,17 @@ const candidates: GeometryCandidate[] = [
       [0, 5, 0]
     ],
     closed: true
+  },
+  {
+    id: "line-d",
+    shape: "edge",
+    kind: "line",
+    label: "D",
+    points: [
+      [0, 0, 0],
+      [20, 0, 0]
+    ],
+    closed: false
   }
 ];
 
@@ -54,24 +65,25 @@ describe("filterCandidatesByTargetShape", () => {
     expect(result.map((candidate) => candidate.id)).toEqual(["arc-a", "circle-b"]);
   });
 
-  it("returns all candidates when target shape is edge", () => {
+  it("returns only edge candidates when target shape is edge", () => {
     const result = filterCandidatesByTargetShape(candidates, "edge");
 
-    expect(result).toHaveLength(3);
+    expect(result.map((candidate) => candidate.id)).toEqual(["line-d"]);
   });
 
   it("filters visible candidates by semantic recommendation kind after target shape", () => {
     const semanticCandidates: GeometryCandidate[] = [
       { ...candidates[0], semanticKind: "nozzle-root-circular" },
       { ...candidates[1], semanticKind: "end-cap-circular" },
-      { ...candidates[2], semanticKind: "linear-body-seam" }
+      { ...candidates[2], semanticKind: "rectangle-seam" },
+      { ...candidates[3], semanticKind: "linear-body-seam" }
     ];
 
     expect(filterCandidatesForWorkbench(semanticCandidates, "circle", "end-cap-circular").map((candidate) => candidate.id)).toEqual([
       "circle-b"
     ]);
     expect(filterCandidatesForWorkbench(semanticCandidates, "edge", "linear-body-seam").map((candidate) => candidate.id)).toEqual([
-      "rect-a"
+      "line-d"
     ]);
   });
 });

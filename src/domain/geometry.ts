@@ -4,9 +4,6 @@ export function filterCandidatesByTargetShape(
   candidates: GeometryCandidate[],
   targetShape: TargetShape
 ): GeometryCandidate[] {
-  if (targetShape === "edge") {
-    return candidates;
-  }
   return candidates.filter((candidate) => candidate.shape === targetShape);
 }
 
