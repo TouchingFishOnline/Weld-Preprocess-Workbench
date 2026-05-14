@@ -86,4 +86,37 @@ describe("workpiece manifest adapters", () => {
     expect(candidates.map((candidate) => candidate.id)).toEqual(["seam_candidate_001"]);
     expect(candidates[0].label).toBe("Nozzle root 001");
   });
+
+  it("converts rectangular semantic seam candidates into rectangle candidates", () => {
+    const candidates = manifestToCandidates({
+      ...manifest,
+      seamCandidateUrl: "seam-candidates.json",
+      seamCandidates: [
+        {
+          id: "rectangular-perimeter-001",
+          kind: "rectangular-perimeter-seam",
+          shape: "rectangle",
+          label: "Rect perimeter 001",
+          sourceEdgeIds: ["edge_a", "edge_b", "edge_c", "edge_d"],
+          closed: true,
+          confidence: 0.58,
+          points: [
+            [0, 0, 0],
+            [10, 0, 0],
+            [10, 10, 0],
+            [0, 10, 0],
+            [0, 0, 0]
+          ]
+        }
+      ]
+    });
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0].shape).toBe("rectangle");
+    expect(candidates[0].semanticKind).toBe("rectangular-perimeter-seam");
+    if (candidates[0].shape !== "rectangle") {
+      throw new Error("expected rectangle candidate");
+    }
+    expect(candidates[0].points).toHaveLength(5);
+  });
 });

@@ -121,4 +121,50 @@ describe("sampleTorchPoses", () => {
     expect(poses[0].position).toEqual([0, 0, -10]);
     expect(poses[1].position).toEqual([0, 10, 0]);
   });
+
+  it("uses signed work angles to choose the laser approach side on straight seams", () => {
+    const straightSeam: WeldSeam = {
+      id: "straight",
+      label: "S-line",
+      segments: [
+        {
+          candidateId: "edge-1",
+          shape: "edge",
+          points: [
+            [0, 0, 0],
+            [10, 0, 0]
+          ],
+          closed: false
+        }
+      ],
+      fallbackPath: [
+        [0, 0, 0],
+        [10, 0, 0]
+      ]
+    };
+
+    const positive = sampleTorchPoses(straightSeam, {
+      referenceNormal: [0, 0, 1],
+      normalFlipped: false,
+      travelDirection: "forward",
+      workAngleDeg: 35,
+      travelAngleDeg: 0,
+      lateralOffsetMm: 0,
+      focusOffsetMm: 0,
+      sampleCount: 2
+    })[0];
+    const negative = sampleTorchPoses(straightSeam, {
+      referenceNormal: [0, 0, 1],
+      normalFlipped: false,
+      travelDirection: "forward",
+      workAngleDeg: -35,
+      travelAngleDeg: 0,
+      lateralOffsetMm: 0,
+      focusOffsetMm: 0,
+      sampleCount: 2
+    })[0];
+
+    expect(Math.sign(positive.beamDirection[1])).toBe(-Math.sign(negative.beamDirection[1]));
+    expect(positive.beamDirection[2]).toBeCloseTo(negative.beamDirection[2]);
+  });
 });

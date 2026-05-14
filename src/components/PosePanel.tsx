@@ -1,4 +1,4 @@
-import { FlipVertical2, Gauge, Move3D } from "lucide-react";
+import { FlipHorizontal2, FlipVertical2, Gauge, Move3D } from "lucide-react";
 import { sampleTorchPoses } from "../domain/pose";
 import { useWorkbenchStore } from "../state/workbenchStore";
 
@@ -40,8 +40,8 @@ export function PosePanel() {
         <span>工作角 / 入射角</span>
         <input
           type="range"
-          min="0"
-          max="70"
+          min="-120"
+          max="120"
           value={poseDefinition.workAngleDeg}
           onChange={(event) => updatePoseDefinition({ workAngleDeg: Number(event.target.value) })}
         />
@@ -74,6 +74,18 @@ export function PosePanel() {
       </label>
 
       <div className="pose-actions">
+        <button
+          className="secondary-action"
+          type="button"
+          onClick={() =>
+            updatePoseDefinition({
+              workAngleDeg: poseDefinition.workAngleDeg === 0 ? -35 : -poseDefinition.workAngleDeg
+            })
+          }
+        >
+          <FlipHorizontal2 size={16} />
+          入射侧翻转
+        </button>
         <button
           className="secondary-action"
           type="button"

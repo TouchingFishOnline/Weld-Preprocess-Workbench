@@ -66,11 +66,20 @@ class PreprocessStepTest(unittest.TestCase):
             self.assertIn("side-fitting-circular", candidate_kinds)
             self.assertIn("end-cap-circular", candidate_kinds)
             self.assertIn("unknown-round-edge-group", candidate_kinds)
+            self.assertIn("rectangular-perimeter-seam", candidate_kinds)
             self.assertTrue(all(candidate.get("adjacentFaceIds") for candidate in seam_candidates[:20]))
             self.assertTrue(all("frame" in candidate for candidate in seam_candidates[:20]))
             self.assertTrue(all("tangent" in candidate["frame"] for candidate in seam_candidates[:20]))
             self.assertTrue(all("referenceNormal" in candidate["frame"] for candidate in seam_candidates[:20]))
             self.assertTrue(all("adjacentNormals" in candidate["frame"] for candidate in seam_candidates[:20]))
+
+            rectangular_candidates = [
+                candidate for candidate in seam_candidates if candidate["kind"] == "rectangular-perimeter-seam"
+            ]
+            self.assertGreaterEqual(len(rectangular_candidates), 2)
+            self.assertTrue(all(candidate["shape"] == "rectangle" for candidate in rectangular_candidates))
+            self.assertTrue(all(candidate["closed"] for candidate in rectangular_candidates))
+            self.assertTrue(all(len(candidate["points"]) >= 4 for candidate in rectangular_candidates))
 
     def test_can_skip_semantic_seam_candidate_generation(self):
         source = Path(__file__).resolve().parents[2] / "manifold-combined.STEP"

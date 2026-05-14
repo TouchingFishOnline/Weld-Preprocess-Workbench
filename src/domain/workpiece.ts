@@ -54,6 +54,21 @@ export function manifestEdgesToCandidates(edges: WorkpieceEdge[]): GeometryCandi
 }
 
 export function semanticSeamCandidateToCandidate(candidate: WorkpieceSeamCandidate): GeometryCandidate {
+  if (candidate.shape === "rectangle") {
+    return {
+      id: candidate.id,
+      shape: "rectangle",
+      kind: "polyline",
+      label: candidate.label,
+      points: candidate.points,
+      closed: candidate.closed,
+      semanticKind: candidate.kind,
+      confidence: candidate.confidence,
+      adjacentFaceIds: candidate.adjacentFaceIds,
+      frame: candidate.frame
+    };
+  }
+
   if (candidate.shape === "edge") {
     return {
       id: candidate.id,

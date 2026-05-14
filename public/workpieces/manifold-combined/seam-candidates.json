@@ -25969,6 +25969,254 @@
     },
     {
       "id": "seam_candidate_126",
+      "kind": "rectangular-perimeter-seam",
+      "shape": "rectangle",
+      "label": "Rect perimeter 01",
+      "sourceEdgeIds": [
+        "edge_02002",
+        "edge_02007",
+        "edge_02013",
+        "edge_02012",
+        "edge_02010",
+        "edge_02008",
+        "edge_02006",
+        "edge_02003",
+        "edge_02009",
+        "edge_02004",
+        "edge_02011",
+        "edge_02005"
+      ],
+      "adjacentFaceIds": [
+        "face_00626",
+        "face_00627",
+        "face_00630",
+        "face_00631",
+        "face_00629",
+        "face_00628"
+      ],
+      "adjacentFaceTypes": [
+        "plane"
+      ],
+      "closed": true,
+      "confidence": 0.58,
+      "points": [
+        [
+          702.3463454817901,
+          -51.0,
+          1345.0000000000998
+        ],
+        [
+          741.34634548179,
+          -51.0,
+          1345.0000000000998
+        ],
+        [
+          741.34634548179,
+          3.99999999999955,
+          1345.0000000000998
+        ],
+        [
+          702.3463454817901,
+          3.99999999999955,
+          1345.0000000000998
+        ],
+        [
+          741.34634548179,
+          3.99999999999955,
+          1409.0000000001
+        ],
+        [
+          702.3463454817901,
+          3.99999999999955,
+          1409.0000000001
+        ],
+        [
+          702.3463454817901,
+          -51.0,
+          1409.0000000001
+        ],
+        [
+          741.34634548179,
+          -51.0,
+          1409.0000000001
+        ],
+        [
+          702.3463454817901,
+          -51.0,
+          1345.0000000000998
+        ]
+      ],
+      "frame": {
+        "tangent": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "referenceNormal": [
+          -0.0,
+          1.0,
+          0.0
+        ],
+        "adjacentNormals": [
+          [
+            -0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          [
+            -0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          [
+            1.0,
+            0.0,
+            0.0
+          ]
+        ]
+      }
+    },
+    {
+      "id": "seam_candidate_127",
+      "kind": "rectangular-perimeter-seam",
+      "shape": "rectangle",
+      "label": "Rect perimeter 02",
+      "sourceEdgeIds": [
+        "edge_02339",
+        "edge_02343",
+        "edge_02340",
+        "edge_02346",
+        "edge_02341",
+        "edge_02348",
+        "edge_02342",
+        "edge_02344",
+        "edge_02350",
+        "edge_02345",
+        "edge_02347",
+        "edge_02349"
+      ],
+      "adjacentFaceIds": [
+        "face_00923",
+        "face_00924",
+        "face_00925",
+        "face_00926",
+        "face_00927",
+        "face_00928"
+      ],
+      "adjacentFaceTypes": [
+        "plane"
+      ],
+      "closed": true,
+      "confidence": 0.58,
+      "points": [
+        [
+          702.3463454817901,
+          1304.0,
+          1345.0000000000998
+        ],
+        [
+          741.34634548179,
+          1304.0,
+          1345.0000000000998
+        ],
+        [
+          702.3463454817901,
+          1349.0,
+          1345.0000000000998
+        ],
+        [
+          741.34634548179,
+          1349.0,
+          1345.0000000000998
+        ],
+        [
+          702.3463454817901,
+          1349.0,
+          1409.0000000001
+        ],
+        [
+          741.34634548179,
+          1349.0,
+          1409.0000000001
+        ],
+        [
+          741.34634548179,
+          1304.0,
+          1409.0000000001
+        ],
+        [
+          702.3463454817901,
+          1304.0,
+          1409.0000000001
+        ],
+        [
+          702.3463454817901,
+          1304.0,
+          1345.0000000000998
+        ]
+      ],
+      "frame": {
+        "tangent": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "referenceNormal": [
+          0.0,
+          -1.0,
+          0.0
+        ],
+        "adjacentNormals": [
+          [
+            0.0,
+            -1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          [
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            -1.0,
+            0.0
+          ]
+        ]
+      }
+    },
+    {
+      "id": "seam_candidate_128",
       "kind": "linear-body-seam",
       "shape": "edge",
       "label": "Linear body 01",
@@ -26023,7 +26271,7 @@
       }
     },
     {
-      "id": "seam_candidate_127",
+      "id": "seam_candidate_129",
       "kind": "linear-body-seam",
       "shape": "edge",
       "label": "Linear body 02",
@@ -26078,7 +26326,7 @@
       }
     },
     {
-      "id": "seam_candidate_128",
+      "id": "seam_candidate_130",
       "kind": "linear-body-seam",
       "shape": "edge",
       "label": "Linear body 03",
@@ -26133,7 +26381,7 @@
       }
     },
     {
-      "id": "seam_candidate_129",
+      "id": "seam_candidate_131",
       "kind": "linear-body-seam",
       "shape": "edge",
       "label": "Linear body 04",
@@ -26188,7 +26436,7 @@
       }
     },
     {
-      "id": "seam_candidate_130",
+      "id": "seam_candidate_132",
       "kind": "linear-body-seam",
       "shape": "edge",
       "label": "Linear body 05",
@@ -26243,7 +26491,7 @@
       }
     },
     {
-      "id": "seam_candidate_131",
+      "id": "seam_candidate_133",
       "kind": "linear-body-seam",
       "shape": "edge",
       "label": "Linear body 06",
@@ -26298,7 +26546,7 @@
       }
     },
     {
-      "id": "seam_candidate_132",
+      "id": "seam_candidate_134",
       "kind": "linear-body-seam",
       "shape": "edge",
       "label": "Linear body 07",
@@ -26353,7 +26601,7 @@
       }
     },
     {
-      "id": "seam_candidate_133",
+      "id": "seam_candidate_135",
       "kind": "linear-body-seam",
       "shape": "edge",
       "label": "Linear body 08",

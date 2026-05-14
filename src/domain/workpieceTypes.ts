@@ -84,6 +84,19 @@ export type WorkpieceSeamCandidate =
       confidence: number;
       points: Vec3[];
       frame?: WorkpieceCandidateFrame;
+    }
+  | {
+      id: string;
+      kind: "rectangular-perimeter-seam" | string;
+      shape: "rectangle";
+      label: string;
+      sourceEdgeIds: string[];
+      adjacentFaceIds?: string[];
+      adjacentFaceTypes?: string[];
+      closed: boolean;
+      confidence: number;
+      points: Vec3[];
+      frame?: WorkpieceCandidateFrame;
     };
 
 export interface WorkpieceManifest {

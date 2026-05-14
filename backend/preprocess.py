@@ -234,6 +234,7 @@ def _build_semantic_seam_candidates(
     used_edge_ids: set[str] = set()
     candidates.extend(_build_nozzle_root_candidates(edges, face_lookup, bbox, used_edge_ids))
     candidates.extend(_build_round_topology_candidates(edges, face_lookup, bbox, used_edge_ids))
+    candidates.extend(_build_rectangular_perimeter_candidates(edges, face_lookup, bbox, used_edge_ids))
     candidates.extend(_build_linear_body_candidates(edges, face_lookup, bbox, used_edge_ids))
     for index, candidate in enumerate(candidates, start=1):
         candidate["id"] = f"seam_candidate_{index:03d}"
@@ -415,6 +416,123 @@ def _build_linear_body_candidates(
             }
         )
     return candidates
+
+
+def _build_rectangular_perimeter_candidates(
+    edges: list[dict[str, Any]],
+    face_lookup: dict[str, dict[str, Any]],
+    bbox: dict[str, list[float]],
+    used_edge_ids: set[str],
+) -> list[dict[str, Any]]:
+    line_edges = [
+        edge
+        for edge in edges
+        if edge["id"] not in used_edge_ids and edge["type"] == "line" and float(edge.get("lengthMm") or 0.0) >= 3.0
+    ]
+    components = _connected_line_components(line_edges)
+    candidates: list[dict[str, Any]] = []
+    max_compact_extent = max(90.0, min(max(bbox["size"]) * 0.16, 220.0))
+
+    for component in sorted(components, key=lambda items: -sum(edge["lengthMm"] for edge in items)):
+        if len(component) < 4 or len(component) > 18:
+            continue
+        points = [point for edge in component for point in (edge["polyline"][0], edge["polyline"][-1])]
+        component_bbox = _points_bbox(points)
+        extents = component_bbox["size"]
+        perimeter = sum(float(edge["lengthMm"]) for edge in component)
+        if perimeter < 80.0 or perimeter > 900.0:
+            continue
+        if max(extents) > max_compact_extent:
+            continue
+        if sum(1 for extent in extents if extent <= 2.5) > 1:
+            continue
+
+        ordered_points = _ordered_loop_points(points)
+        if len(ordered_points) < 4:
+            continue
+        adjacent_face_ids = _merged_adjacent_face_ids(component)
+        if not adjacent_face_ids:
+            continue
+        used_edge_ids.update(edge["id"] for edge in component)
+        candidates.append(
+            {
+                "id": "",
+                "kind": "rectangular-perimeter-seam",
+                "shape": "rectangle",
+                "label": f"Rect perimeter {len(candidates) + 1:02d}",
+                "sourceEdgeIds": [edge["id"] for edge in component],
+                "adjacentFaceIds": adjacent_face_ids,
+                "adjacentFaceTypes": _adjacent_face_types(adjacent_face_ids, face_lookup),
+                "closed": True,
+                "confidence": 0.58,
+                "points": ordered_points,
+                "frame": _local_frame(ordered_points, None, adjacent_face_ids, face_lookup),
+            }
+        )
+
+    return candidates[:12]
+
+
+def _connected_line_components(line_edges: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    node_edges: dict[tuple[int, int, int], list[str]] = {}
+    edge_lookup = {edge["id"]: edge for edge in line_edges}
+    for edge in line_edges:
+        for point in (edge["polyline"][0], edge["polyline"][-1]):
+            node_edges.setdefault(_quantized_point(point), []).append(edge["id"])
+
+    components: list[list[dict[str, Any]]] = []
+    visited: set[str] = set()
+    for edge in line_edges:
+        if edge["id"] in visited:
+            continue
+        stack = [edge["id"]]
+        component_ids: list[str] = []
+        while stack:
+            edge_id = stack.pop()
+            if edge_id in visited:
+                continue
+            visited.add(edge_id)
+            component_ids.append(edge_id)
+            current = edge_lookup[edge_id]
+            for point in (current["polyline"][0], current["polyline"][-1]):
+                for neighbor_id in node_edges.get(_quantized_point(point), []):
+                    if neighbor_id not in visited:
+                        stack.append(neighbor_id)
+        components.append([edge_lookup[edge_id] for edge_id in component_ids])
+    return components
+
+
+def _quantized_point(point: list[float], tolerance: float = 0.5) -> tuple[int, int, int]:
+    return tuple(round(component / tolerance) for component in point)
+
+
+def _points_bbox(points: list[list[float]]) -> dict[str, list[float]]:
+    min_point = [min(point[index] for point in points) for index in range(3)]
+    max_point = [max(point[index] for point in points) for index in range(3)]
+    center = [(min_point[index] + max_point[index]) / 2 for index in range(3)]
+    size = [max_point[index] - min_point[index] for index in range(3)]
+    return {"min": min_point, "max": max_point, "center": center, "size": size}
+
+
+def _ordered_loop_points(points: list[list[float]]) -> list[list[float]]:
+    unique: list[list[float]] = []
+    seen: set[tuple[int, int, int]] = set()
+    for point in points:
+        key = _quantized_point(point)
+        if key not in seen:
+            seen.add(key)
+            unique.append(point)
+    if len(unique) < 4:
+        return []
+    bbox = _points_bbox(unique)
+    drop_axis = min(range(3), key=lambda index: bbox["size"][index])
+    axes = [index for index in range(3) if index != drop_axis]
+    center = bbox["center"]
+    ordered = sorted(
+        unique,
+        key=lambda point: math.atan2(point[axes[1]] - center[axes[1]], point[axes[0]] - center[axes[0]]),
+    )
+    return ordered + [ordered[0]]
 
 
 def _classify_round_candidate(
