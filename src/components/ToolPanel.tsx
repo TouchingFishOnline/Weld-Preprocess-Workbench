@@ -151,7 +151,7 @@ function candidateKindLabel(kind: string): string {
       "end-cap-circular": "端部圆焊",
       "side-fitting-circular": "侧向圆焊",
       "backside-nozzle-circular": "背面圆焊",
-      "rectangular-perimeter-seam": "矩形周边",
+      "rectangular-sleeve-root-seam": "矩形接管",
       "linear-body-seam": "直线候选",
       "unknown-round-edge-group": "其他圆边"
     }[kind] ?? kind

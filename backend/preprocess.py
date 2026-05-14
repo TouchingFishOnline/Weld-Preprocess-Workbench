@@ -234,7 +234,7 @@ def _build_semantic_seam_candidates(
     used_edge_ids: set[str] = set()
     candidates.extend(_build_nozzle_root_candidates(edges, face_lookup, bbox, used_edge_ids))
     candidates.extend(_build_round_topology_candidates(edges, face_lookup, bbox, used_edge_ids))
-    candidates.extend(_build_rectangular_perimeter_candidates(edges, face_lookup, bbox, used_edge_ids))
+    candidates.extend(_build_rectangular_sleeve_root_candidates(edges, face_lookup, bbox, used_edge_ids))
     candidates.extend(_build_linear_body_candidates(edges, face_lookup, bbox, used_edge_ids))
     for index, candidate in enumerate(candidates, start=1):
         candidate["id"] = f"seam_candidate_{index:03d}"
@@ -418,57 +418,89 @@ def _build_linear_body_candidates(
     return candidates
 
 
-def _build_rectangular_perimeter_candidates(
+def _build_rectangular_sleeve_root_candidates(
     edges: list[dict[str, Any]],
     face_lookup: dict[str, dict[str, Any]],
     bbox: dict[str, list[float]],
     used_edge_ids: set[str],
 ) -> list[dict[str, Any]]:
-    line_edges = [
-        edge
+    candidate_edges = {
+        edge["id"]: edge
         for edge in edges
-        if edge["id"] not in used_edge_ids and edge["type"] == "line" and float(edge.get("lengthMm") or 0.0) >= 3.0
-    ]
-    components = _connected_line_components(line_edges)
+        if edge["id"] not in used_edge_ids
+        and edge["type"] in {"circle", "line"}
+        and not edge.get("closed", False)
+        and float(edge.get("lengthMm") or 0.0) >= 1.0
+    }
     candidates: list[dict[str, Any]] = []
-    max_compact_extent = max(90.0, min(max(bbox["size"]) * 0.16, 220.0))
+    seen_source_sets: set[frozenset[str]] = set()
 
-    for component in sorted(components, key=lambda items: -sum(edge["lengthMm"] for edge in items)):
-        if len(component) < 4 or len(component) > 18:
+    for face_id, face in sorted(face_lookup.items()):
+        if face.get("type") != "plane":
             continue
-        points = [point for edge in component for point in (edge["polyline"][0], edge["polyline"][-1])]
-        component_bbox = _points_bbox(points)
-        extents = component_bbox["size"]
-        perimeter = sum(float(edge["lengthMm"]) for edge in component)
-        if perimeter < 80.0 or perimeter > 900.0:
+        normal = face.get("normal")
+        if not normal or abs(normal[1]) < 0.85:
             continue
-        if max(extents) > max_compact_extent:
-            continue
-        if sum(1 for extent in extents if extent <= 2.5) > 1:
+        face_edges = [
+            edge for edge in candidate_edges.values() if face_id in edge.get("adjacentFaceIds", []) and edge["id"] not in used_edge_ids
+        ]
+        if len(face_edges) < 8:
             continue
 
-        ordered_points = _ordered_loop_points(points)
-        if len(ordered_points) < 4:
+        loops = []
+        for component in _connected_line_components(face_edges):
+            loop_points = _trace_line_loop_points(component)
+            if len(loop_points) < 5:
+                continue
+            loop_bbox = _points_bbox(loop_points)
+            extents = loop_bbox["size"]
+            non_zero_extents = [extent for extent in extents if extent > 2.5]
+            perimeter = sum(float(edge["lengthMm"]) for edge in component)
+            if len(non_zero_extents) != 2:
+                continue
+            if perimeter < 80.0 or perimeter > 260.0:
+                continue
+            if min(non_zero_extents) < 15.0 or max(non_zero_extents) > 95.0:
+                continue
+            loops.append(
+                {
+                    "component": component,
+                    "points": loop_points,
+                    "areaScore": non_zero_extents[0] * non_zero_extents[1],
+                    "perimeter": perimeter,
+                }
+            )
+        if len(loops) < 2:
             continue
-        adjacent_face_ids = _merged_adjacent_face_ids(component)
-        if not adjacent_face_ids:
-            continue
-        used_edge_ids.update(edge["id"] for edge in component)
-        candidates.append(
-            {
-                "id": "",
-                "kind": "rectangular-perimeter-seam",
-                "shape": "rectangle",
-                "label": f"Rect perimeter {len(candidates) + 1:02d}",
-                "sourceEdgeIds": [edge["id"] for edge in component],
-                "adjacentFaceIds": adjacent_face_ids,
-                "adjacentFaceTypes": _adjacent_face_types(adjacent_face_ids, face_lookup),
-                "closed": True,
-                "confidence": 0.58,
-                "points": ordered_points,
-                "frame": _local_frame(ordered_points, None, adjacent_face_ids, face_lookup),
-            }
-        )
+
+        outer_loop = max(loops, key=lambda loop: loop["areaScore"])
+        for loop in sorted(loops, key=lambda item: item["areaScore"]):
+            if loop is outer_loop:
+                continue
+            component = loop["component"]
+            source_edge_ids = [edge["id"] for edge in component]
+            source_set = frozenset(source_edge_ids)
+            if source_set in seen_source_sets:
+                continue
+            seen_source_sets.add(source_set)
+            adjacent_face_ids = _unique([face_id, *_merged_adjacent_face_ids(component)])
+            used_edge_ids.update(source_edge_ids)
+            points = loop["points"]
+            candidates.append(
+                {
+                    "id": "",
+                    "kind": "rectangular-sleeve-root-seam",
+                    "shape": "rectangle",
+                    "label": f"Sleeve root {len(candidates) + 1:02d}",
+                    "sourceEdgeIds": source_edge_ids,
+                    "adjacentFaceIds": adjacent_face_ids,
+                    "adjacentFaceTypes": _adjacent_face_types(adjacent_face_ids, face_lookup),
+                    "closed": True,
+                    "confidence": 0.72,
+                    "points": points,
+                    "frame": _local_frame(points, None, adjacent_face_ids, face_lookup),
+                }
+            )
 
     return candidates[:12]
 
@@ -500,6 +532,43 @@ def _connected_line_components(line_edges: list[dict[str, Any]]) -> list[list[di
                         stack.append(neighbor_id)
         components.append([edge_lookup[edge_id] for edge_id in component_ids])
     return components
+
+
+def _trace_line_loop_points(component: list[dict[str, Any]]) -> list[list[float]]:
+    edge_lookup = {edge["id"]: edge for edge in component}
+    node_edges: dict[tuple[int, int, int], list[str]] = {}
+    point_lookup: dict[tuple[int, int, int], list[float]] = {}
+    for edge in component:
+        for point in (edge["polyline"][0], edge["polyline"][-1]):
+            key = _quantized_point(point)
+            node_edges.setdefault(key, []).append(edge["id"])
+            point_lookup.setdefault(key, point)
+
+    if len(node_edges) < 3 or any(len(edge_ids) != 2 for edge_ids in node_edges.values()):
+        return []
+
+    start_edge = min(component, key=lambda edge: edge["id"])
+    start_key, current_key = [_quantized_point(point) for point in (start_edge["polyline"][0], start_edge["polyline"][-1])]
+    points = list(start_edge["polyline"])
+    visited = {start_edge["id"]}
+
+    while len(visited) < len(component):
+        next_edge_id = next((edge_id for edge_id in node_edges[current_key] if edge_id not in visited), None)
+        if next_edge_id is None:
+            return []
+        visited.add(next_edge_id)
+        next_edge = edge_lookup[next_edge_id]
+        endpoint_keys = [_quantized_point(point) for point in (next_edge["polyline"][0], next_edge["polyline"][-1])]
+        if endpoint_keys[0] == current_key:
+            points.extend(next_edge["polyline"][1:])
+            current_key = endpoint_keys[1]
+        elif endpoint_keys[1] == current_key:
+            points.extend(list(reversed(next_edge["polyline"]))[1:])
+            current_key = endpoint_keys[0]
+        else:
+            return []
+
+    return points if current_key == start_key else []
 
 
 def _quantized_point(point: list[float], tolerance: float = 0.5) -> tuple[int, int, int]:
@@ -587,6 +656,14 @@ def _merged_adjacent_face_ids(edges: list[dict[str, Any]]) -> list[str]:
             if face_id not in face_ids:
                 face_ids.append(face_id)
     return face_ids
+
+
+def _unique(values: list[str]) -> list[str]:
+    unique_values: list[str] = []
+    for value in values:
+        if value not in unique_values:
+            unique_values.append(value)
+    return unique_values
 
 
 def _adjacent_face_types(face_ids: list[str], face_lookup: dict[str, dict[str, Any]]) -> list[str]:

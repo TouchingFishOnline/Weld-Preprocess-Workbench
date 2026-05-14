@@ -87,7 +87,7 @@ export type WorkpieceSeamCandidate =
     }
   | {
       id: string;
-      kind: "rectangular-perimeter-seam" | string;
+      kind: "rectangular-sleeve-root-seam" | string;
       shape: "rectangle";
       label: string;
       sourceEdgeIds: string[];

@@ -66,7 +66,7 @@ class PreprocessStepTest(unittest.TestCase):
             self.assertIn("side-fitting-circular", candidate_kinds)
             self.assertIn("end-cap-circular", candidate_kinds)
             self.assertIn("unknown-round-edge-group", candidate_kinds)
-            self.assertIn("rectangular-perimeter-seam", candidate_kinds)
+            self.assertIn("rectangular-sleeve-root-seam", candidate_kinds)
             self.assertTrue(all(candidate.get("adjacentFaceIds") for candidate in seam_candidates[:20]))
             self.assertTrue(all("frame" in candidate for candidate in seam_candidates[:20]))
             self.assertTrue(all("tangent" in candidate["frame"] for candidate in seam_candidates[:20]))
@@ -74,12 +74,21 @@ class PreprocessStepTest(unittest.TestCase):
             self.assertTrue(all("adjacentNormals" in candidate["frame"] for candidate in seam_candidates[:20]))
 
             rectangular_candidates = [
-                candidate for candidate in seam_candidates if candidate["kind"] == "rectangular-perimeter-seam"
+                candidate for candidate in seam_candidates if candidate["kind"] == "rectangular-sleeve-root-seam"
             ]
-            self.assertGreaterEqual(len(rectangular_candidates), 2)
+            self.assertEqual(len(rectangular_candidates), 2)
             self.assertTrue(all(candidate["shape"] == "rectangle" for candidate in rectangular_candidates))
             self.assertTrue(all(candidate["closed"] for candidate in rectangular_candidates))
-            self.assertTrue(all(len(candidate["points"]) >= 4 for candidate in rectangular_candidates))
+            self.assertTrue(all(len(candidate["points"]) > 16 for candidate in rectangular_candidates))
+            source_edge_sets = [set(candidate["sourceEdgeIds"]) for candidate in rectangular_candidates]
+            self.assertTrue(
+                any({"edge_01982", "edge_01988", "edge_01993", "edge_01999"}.issubset(edge_set) for edge_set in source_edge_sets)
+            )
+            self.assertTrue(
+                any({"edge_02325", "edge_02329", "edge_02333", "edge_02337"}.issubset(edge_set) for edge_set in source_edge_sets)
+            )
+            self.assertTrue(all("edge_02002" not in candidate["sourceEdgeIds"] for candidate in rectangular_candidates))
+            self.assertTrue(all("edge_02339" not in candidate["sourceEdgeIds"] for candidate in rectangular_candidates))
 
     def test_can_skip_semantic_seam_candidate_generation(self):
         source = Path(__file__).resolve().parents[2] / "manifold-combined.STEP"

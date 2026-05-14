@@ -93,8 +93,8 @@ describe("workpiece manifest adapters", () => {
       seamCandidateUrl: "seam-candidates.json",
       seamCandidates: [
         {
-          id: "rectangular-perimeter-001",
-          kind: "rectangular-perimeter-seam",
+          id: "rectangular-sleeve-root-001",
+          kind: "rectangular-sleeve-root-seam",
           shape: "rectangle",
           label: "Rect perimeter 001",
           sourceEdgeIds: ["edge_a", "edge_b", "edge_c", "edge_d"],
@@ -113,7 +113,7 @@ describe("workpiece manifest adapters", () => {
 
     expect(candidates).toHaveLength(1);
     expect(candidates[0].shape).toBe("rectangle");
-    expect(candidates[0].semanticKind).toBe("rectangular-perimeter-seam");
+    expect(candidates[0].semanticKind).toBe("rectangular-sleeve-root-seam");
     if (candidates[0].shape !== "rectangle") {
       throw new Error("expected rectangle candidate");
     }
