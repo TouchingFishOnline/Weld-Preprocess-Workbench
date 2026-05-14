@@ -105,4 +105,70 @@ describe("workbench store", () => {
     expect(store.getState().workpieceBaseUrl).toBe("/workpieces/wp");
     expect(store.getState().candidates.map((candidate) => candidate.id)).toEqual(["edge_1"]);
   });
+
+  it("exports and restores operator annotations for the same STEP hash", () => {
+    const sourceStore = createWorkbenchStore();
+    sourceStore.getState().loadWorkpieceManifest(manifest, "/workpieces/wp/manifest.json");
+    sourceStore.getState().addStage();
+    sourceStore.getState().setTargetShape("edge");
+    sourceStore.getState().updatePoseDefinition({ workAngleDeg: 45, travelAngleDeg: -35 });
+    sourceStore.getState().toggleCandidate("edge_1");
+    sourceStore.getState().confirmSelectionAsSeam();
+
+    const project = sourceStore.getState().exportProject();
+
+    expect(project?.workpiece.sourceHash).toBe("abc");
+    expect(project?.plan.seams).toHaveLength(1);
+    expect(project?.plan.stages[0].seamIds).toEqual(["seam-01"]);
+
+    const targetStore = createWorkbenchStore();
+    targetStore.getState().loadWorkpieceManifest(manifest, "/workpieces/wp/manifest.json");
+
+    expect(targetStore.getState().importProject(project)).toEqual({ ok: true });
+    expect(targetStore.getState().targetShape).toBe("edge");
+    expect(targetStore.getState().activeSeamId).toBe("seam-01");
+    expect(targetStore.getState().poseDefinition.workAngleDeg).toBe(45);
+    expect(targetStore.getState().poseDefinition.travelAngleDeg).toBe(-35);
+    expect(targetStore.getState().stages[0].seamIds).toEqual(["seam-01"]);
+  });
+
+  it("rejects annotation imports that do not match the loaded STEP hash", () => {
+    const sourceStore = createWorkbenchStore();
+    sourceStore.getState().loadWorkpieceManifest(manifest, "/workpieces/wp/manifest.json");
+    const project = sourceStore.getState().exportProject();
+
+    const otherManifest: WorkpieceManifest = {
+      ...manifest,
+      id: "other",
+      sourceFile: "other.step",
+      sourceHash: "different"
+    };
+    const targetStore = createWorkbenchStore();
+    targetStore.getState().loadWorkpieceManifest(otherManifest, "/workpieces/other/manifest.json");
+    targetStore.getState().addStage();
+
+    const result = targetStore.getState().importProject(project);
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "hash-mismatch",
+      message: "标注文件不属于当前 STEP，请先加载对应 STEP。"
+    });
+    expect(targetStore.getState().stages).toHaveLength(1);
+    expect(targetStore.getState().seams).toEqual([]);
+  });
+
+  it("rejects unsupported annotation file versions", () => {
+    const store = createWorkbenchStore();
+    store.getState().loadWorkpieceManifest(manifest, "/workpieces/wp/manifest.json");
+    const project = store.getState().exportProject();
+
+    const result = store.getState().importProject({ ...project, version: 99 });
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "unsupported-version",
+      message: "标注文件版本不受支持。"
+    });
+  });
 });

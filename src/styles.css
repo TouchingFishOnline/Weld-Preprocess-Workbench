@@ -87,7 +87,7 @@ h1 {
 
 .import-strip {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr repeat(4, auto);
   align-items: center;
   gap: 12px;
   padding: 14px 24px;

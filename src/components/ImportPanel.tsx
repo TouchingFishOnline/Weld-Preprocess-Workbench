@@ -1,11 +1,14 @@
-import { FileUp, Loader2, Play } from "lucide-react";
+import { Download, FileInput, FileUp, Loader2, Play } from "lucide-react";
 import { useRef, useState } from "react";
 import { DEMO_MANIFEST_URL, fetchWorkpieceManifest, uploadStepFile } from "../domain/workpieceLoader";
 import { useWorkbenchStore } from "../state/workbenchStore";
 
 export function ImportPanel() {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const stepInputRef = useRef<HTMLInputElement>(null);
+  const projectInputRef = useRef<HTMLInputElement>(null);
   const loadWorkpieceManifest = useWorkbenchStore((state) => state.loadWorkpieceManifest);
+  const exportProject = useWorkbenchStore((state) => state.exportProject);
+  const importProject = useWorkbenchStore((state) => state.importProject);
   const workpiece = useWorkbenchStore((state) => state.workpiece);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -24,10 +27,11 @@ export function ImportPanel() {
     }
   }
 
-  async function handleFile(file: File | undefined) {
+  async function handleStepFile(file: File | undefined) {
     if (!file) {
       return;
     }
+
     setBusy(true);
     setMessage("正在上传并预处理 STEP...");
     try {
@@ -41,13 +45,62 @@ export function ImportPanel() {
     }
   }
 
+  function handleExportProject() {
+    const project = exportProject();
+    if (!project) {
+      setMessage("请先加载 STEP，再导出标注文件。");
+      return;
+    }
+
+    const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${project.workpiece.sourceFile.replace(/\.(step|stp)$/i, "")}.weld-workbench.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setMessage("标注文件已导出。");
+  }
+
+  async function handleProjectFile(file: File | undefined) {
+    if (!file) {
+      return;
+    }
+
+    setBusy(true);
+    setMessage("正在导入标注文件...");
+    try {
+      const project = JSON.parse(await file.text()) as unknown;
+      const result = importProject(project);
+      setMessage(result.ok ? "标注文件已导入。" : result.message);
+    } catch {
+      setMessage("标注文件格式不正确。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <section className={workpiece ? "import-strip compact" : "import-strip"}>
       <input
-        ref={inputRef}
+        ref={stepInputRef}
         type="file"
         accept=".step,.stp"
-        onChange={(event) => void handleFile(event.target.files?.[0])}
+        onChange={(event) => {
+          void handleStepFile(event.target.files?.[0]);
+          event.currentTarget.value = "";
+        }}
+      />
+      <input
+        ref={projectInputRef}
+        type="file"
+        accept=".json,.weld-workbench.json"
+        onChange={(event) => {
+          void handleProjectFile(event.target.files?.[0]);
+          event.currentTarget.value = "";
+        }}
       />
       <div>
         <p className="panel-label">STEP 导入</p>
@@ -58,9 +111,22 @@ export function ImportPanel() {
             : "后端会生成真实 GLB 与边/面元数据"}
         </span>
       </div>
-      <button type="button" className="secondary-action" disabled={busy} onClick={() => inputRef.current?.click()}>
+      <button type="button" className="secondary-action" disabled={busy} onClick={() => stepInputRef.current?.click()}>
         {busy ? <Loader2 size={16} className="spin" /> : <FileUp size={16} />}
         上传 STEP
+      </button>
+      <button
+        type="button"
+        className="secondary-action"
+        disabled={busy || !workpiece}
+        onClick={() => projectInputRef.current?.click()}
+      >
+        <FileInput size={16} />
+        导入标注
+      </button>
+      <button type="button" className="secondary-action" disabled={busy || !workpiece} onClick={handleExportProject}>
+        <Download size={16} />
+        导出标注
       </button>
       <button type="button" className="primary-action" disabled={busy} onClick={() => void loadDemo()}>
         <Play size={16} />

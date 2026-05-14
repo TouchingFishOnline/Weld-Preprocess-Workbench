@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { createStore } from "zustand/vanilla";
 import { buildSeamFromCandidates } from "../domain/geometry";
+import {
+  createWorkbenchProject,
+  isWorkbenchProjectFile,
+  normalizeWorkbenchProject,
+  validateWorkbenchProject
+} from "../domain/workbenchProject";
 import { manifestEdgesToCandidates } from "../domain/workpiece";
 import type {
   GeometryCandidate,
@@ -10,6 +16,7 @@ import type {
   WeldStage
 } from "../domain/types";
 import type { StateCreator } from "zustand";
+import type { WorkbenchProjectFile, WorkbenchProjectImportResult } from "../domain/workbenchProject";
 import type { WorkpieceManifest } from "../domain/workpieceTypes";
 
 export interface WorkbenchState {
@@ -38,6 +45,8 @@ export interface WorkbenchState {
   setActiveSeam: (seamId: string | null) => void;
   updatePoseDefinition: (patch: Partial<LaserPoseDefinition>) => void;
   setSameDiameterSource: (candidateId: string | null) => void;
+  exportProject: () => WorkbenchProjectFile | null;
+  importProject: (project: unknown) => WorkbenchProjectImportResult;
 }
 
 const initialPose: LaserPoseDefinition = {
@@ -156,7 +165,47 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
     set((state) => ({
       poseDefinition: { ...state.poseDefinition, ...patch }
     })),
-  setSameDiameterSource: (candidateId) => set({ sameDiameterSourceId: candidateId })
+  setSameDiameterSource: (candidateId) => set({ sameDiameterSourceId: candidateId }),
+  exportProject: () => {
+    const state = get();
+    if (!state.workpiece) {
+      return null;
+    }
+
+    return createWorkbenchProject({
+      manifest: state.workpiece,
+      targetShape: state.targetShape,
+      stages: state.stages,
+      activeStageId: state.activeStageId,
+      seams: state.seams,
+      activeSeamId: state.activeSeamId,
+      poseDefinition: state.poseDefinition
+    });
+  },
+  importProject: (project) => {
+    const validation = validateWorkbenchProject(project, get().workpiece);
+    if (!validation.ok) {
+      return validation;
+    }
+
+    if (!isWorkbenchProjectFile(project)) {
+      return {
+        ok: false,
+        reason: "invalid-project",
+        message: "标注文件格式不正确。"
+      };
+    }
+
+    const normalizedProject = normalizeWorkbenchProject(project);
+    set({
+      ...normalizedProject,
+      selectedCandidateIds: [],
+      hoverCandidateId: null,
+      sameDiameterSourceId: null
+    });
+
+    return { ok: true };
+  }
 });
 
 export const useWorkbenchStore = create<WorkbenchState>()(createWorkbenchSlice);
