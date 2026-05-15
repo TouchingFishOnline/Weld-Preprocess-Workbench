@@ -85,10 +85,11 @@ export function Viewer3D() {
         <button type="button" disabled={viewLocked} onClick={() => setViewPreset("right")}>RIGHT</button>
         <button type="button" disabled={viewLocked} onClick={() => setViewPreset("iso")}>ISO</button>
       </div>
-      <Canvas camera={{ position: [10, -15, 8], fov: 38 }} frameloop="demand" dpr={[1, 1.5]} shadows>
+      <Canvas camera={{ position: [10, -15, 8], fov: 32, near: 0.01, far: 1000 }} frameloop="demand" dpr={[1, 1.75]} shadows gl={{ antialias: true }}>
         <color attach="background" args={["#eef2f5"]} />
-        <ambientLight intensity={0.9} />
-        <directionalLight position={[4, -6, 8]} intensity={1.8} castShadow />
+        <ambientLight intensity={0.62} />
+        <hemisphereLight args={["#f8fbff", "#4b5f6b", 1.35]} />
+        <directionalLight position={[4, -6, 8]} intensity={2.2} castShadow shadow-mapSize={[2048, 2048]} />
         <ViewController preset={viewPreset} />
         {modelUrl && transform ? <ImportedModel modelUrl={modelUrl} transform={transform} /> : <EmptyScene />}
         {transform &&
@@ -125,8 +126,9 @@ export function Viewer3D() {
             RIGHT: THREE.MOUSE.PAN
           }}
           maxPolarAngle={Math.PI * 0.78}
-          minDistance={4}
-          maxDistance={28}
+          minDistance={0.55}
+          maxDistance={42}
+          zoomSpeed={0.75}
         />
       </Canvas>
     </section>
@@ -144,9 +146,9 @@ function ImportedModel({ modelUrl, transform }: { modelUrl: string; transform: D
 
   useEffect(() => {
     const material = new THREE.MeshStandardMaterial({
-      color: "#8fa2ad",
-      roughness: 0.72,
-      metalness: 0.08
+      color: "#a8b7c0",
+      roughness: 0.64,
+      metalness: 0.04
     });
     scene.traverse((object) => {
       if ((object as THREE.Mesh).isMesh) {
@@ -155,8 +157,8 @@ function ImportedModel({ modelUrl, transform }: { modelUrl: string; transform: D
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         const edges = new THREE.LineSegments(
-          new THREE.EdgesGeometry(mesh.geometry, 35),
-          new THREE.LineBasicMaterial({ color: "#33444d", transparent: true, opacity: 0.26 })
+          new THREE.EdgesGeometry(mesh.geometry, 28),
+          new THREE.LineBasicMaterial({ color: "#17232c", transparent: true, opacity: 0.46 })
         );
         edges.renderOrder = 2;
         mesh.add(edges);
@@ -260,7 +262,14 @@ function CandidateOverlay({
           }
         }}
       >
-        <Line points={points} color={color} lineWidth={selected || hovered ? 5 : emphasized ? 4 : 2} transparent opacity={opacity} depthTest={false} />
+        <Line
+          points={points}
+          color={color}
+          lineWidth={selected || hovered ? 5 : emphasized ? 4 : 2}
+          transparent
+          opacity={opacity}
+          depthTest={!selected && !hovered}
+        />
         {(selected || hovered) && (
           <Text position={toScenePoint(candidate.center, transform)} fontSize={0.12} color="#0f172a" anchorX="center" anchorY="middle">
             {candidate.label}
@@ -278,7 +287,7 @@ function CandidateOverlay({
       lineWidth={selected || hovered ? 4 : emphasized ? 5 : 2}
       transparent
       opacity={opacity}
-      depthTest={false}
+      depthTest={!selected && !hovered}
       renderOrder={12}
       onPointerEnter={(event) => {
         event.stopPropagation();

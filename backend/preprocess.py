@@ -283,14 +283,7 @@ def _build_nozzle_root_candidates(
         if not root_options:
             continue
 
-        root_ring = max(
-            root_options,
-            key=lambda ring: (
-                _ring_adjacent_plane_area(ring, face_lookup),
-                sum(edge["lengthMm"] for edge in ring),
-                average(edge["center"][2] for edge in ring),
-            ),
-        )
+        root_ring = _select_nozzle_root_ring(root_options, face_lookup)
         representative = root_ring[0]
         center = representative["center"]
         radius = float(representative["radiusMm"])
@@ -443,6 +436,25 @@ def _ring_adjacent_plane_area(ring: list[dict[str, Any]], face_lookup: dict[str,
             if face and face.get("type") == "plane":
                 area += float(face.get("areaMm2") or 0.0)
     return area
+
+
+def _select_nozzle_root_ring(
+    root_options: list[list[dict[str, Any]]], face_lookup: dict[str, dict[str, Any]]
+) -> list[dict[str, Any]]:
+    lowest_root_z = min(average(edge["center"][2] for edge in ring) for ring in root_options)
+    root_band_upper_z = lowest_root_z + 6.0
+    root_band = [
+        ring for ring in root_options if average(edge["center"][2] for edge in ring) <= root_band_upper_z
+    ]
+    return max(
+        root_band or root_options,
+        key=lambda ring: (
+            average(float(edge.get("diameterMm") or 0.0) for edge in ring),
+            average(edge["center"][2] for edge in ring),
+            sum(edge["lengthMm"] for edge in ring),
+            _ring_adjacent_plane_area(ring, face_lookup),
+        ),
+    )
 
 
 def _build_linear_body_candidates(
