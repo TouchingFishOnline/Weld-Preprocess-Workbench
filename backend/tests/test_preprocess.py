@@ -58,7 +58,7 @@ class PreprocessStepTest(unittest.TestCase):
             self.assertLess(len(nozzle_root_candidates), len(circular_edges) / 10)
             self.assertTrue(all(candidate["sourceEdgeIds"] for candidate in nozzle_root_candidates))
             self.assertTrue(all(candidate["closed"] for candidate in nozzle_root_candidates))
-            self.assertTrue(any(abs(candidate["diameterMm"] - 22.5) < 0.2 for candidate in nozzle_root_candidates))
+            self.assertTrue(any(abs(candidate["diameterMm"] - 23.0) < 0.2 for candidate in nozzle_root_candidates))
             self.assertTrue(all(len(candidate["polyline"]) >= 32 for candidate in nozzle_root_candidates[:5]))
 
             candidate_kinds = {candidate["kind"] for candidate in seam_candidates}
@@ -121,7 +121,9 @@ class PreprocessStepTest(unittest.TestCase):
             self.assertGreaterEqual(len(nozzle_root_candidates), 27)
             self.assertTrue(
                 any(
-                    abs(candidate["center"][1] - 387.3) < 0.2 and abs(candidate["diameterMm"] - 22.5) < 0.3
+                    abs(candidate["center"][1] - 387.3) < 0.2
+                    and abs(candidate["center"][2] - 30.0) < 0.2
+                    and abs(candidate["diameterMm"] - 23.0) < 0.3
                     for candidate in nozzle_root_candidates
                 )
             )

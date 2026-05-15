@@ -283,7 +283,14 @@ def _build_nozzle_root_candidates(
         if not root_options:
             continue
 
-        root_ring = min(root_options, key=lambda ring: (average(edge["center"][2] for edge in ring), -sum(edge["lengthMm"] for edge in ring)))
+        root_ring = max(
+            root_options,
+            key=lambda ring: (
+                _ring_adjacent_plane_area(ring, face_lookup),
+                sum(edge["lengthMm"] for edge in ring),
+                average(edge["center"][2] for edge in ring),
+            ),
+        )
         representative = root_ring[0]
         center = representative["center"]
         radius = float(representative["radiusMm"])
@@ -422,6 +429,20 @@ def _cluster_edges_by_z_and_diameter(edges: list[dict[str, Any]], tolerance_mm: 
             clusters.append([edge])
             centers.append([center[2], diameter])
     return clusters
+
+
+def _ring_adjacent_plane_area(ring: list[dict[str, Any]], face_lookup: dict[str, dict[str, Any]]) -> float:
+    area = 0.0
+    seen: set[str] = set()
+    for edge in ring:
+        for face_id in edge.get("adjacentFaceIds", []):
+            if face_id in seen:
+                continue
+            seen.add(face_id)
+            face = face_lookup.get(face_id)
+            if face and face.get("type") == "plane":
+                area += float(face.get("areaMm2") or 0.0)
+    return area
 
 
 def _build_linear_body_candidates(

@@ -75,6 +75,7 @@ export interface WeldSeam {
   label: string;
   segments: WeldSeamSegment[];
   fallbackPath: Vec3[];
+  poseDefinition?: LaserPoseDefinition;
 }
 
 export interface WeldStage {

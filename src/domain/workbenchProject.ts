@@ -21,6 +21,7 @@ export interface WorkbenchProjectFile {
     seams: WeldSeam[];
     activeSeamId: string | null;
     poseDefinition: LaserPoseDefinition;
+    defaultPoseDefinition?: LaserPoseDefinition;
   };
 }
 
@@ -40,6 +41,7 @@ interface WorkbenchProjectSource {
   seams: WeldSeam[];
   activeSeamId: string | null;
   poseDefinition: LaserPoseDefinition;
+  defaultPoseDefinition: LaserPoseDefinition;
 }
 
 export function createWorkbenchProject(source: WorkbenchProjectSource): WorkbenchProjectFile {
@@ -59,7 +61,8 @@ export function createWorkbenchProject(source: WorkbenchProjectSource): Workbenc
       activeStageId: source.activeStageId,
       seams: cloneJson(source.seams),
       activeSeamId: source.activeSeamId,
-      poseDefinition: cloneJson(source.poseDefinition)
+      poseDefinition: cloneJson(source.poseDefinition),
+      defaultPoseDefinition: cloneJson(source.defaultPoseDefinition)
     }
   };
 }
@@ -121,7 +124,8 @@ export function normalizeWorkbenchProject(project: WorkbenchProjectFile) {
       project.plan.activeSeamId && seamIds.has(project.plan.activeSeamId)
         ? project.plan.activeSeamId
         : (seams[0]?.id ?? null),
-    poseDefinition: cloneJson(project.plan.poseDefinition)
+    poseDefinition: cloneJson(project.plan.poseDefinition),
+    defaultPoseDefinition: cloneJson(project.plan.defaultPoseDefinition ?? project.plan.poseDefinition)
   };
 }
 

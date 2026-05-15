@@ -45,7 +45,8 @@ export function Viewer3D() {
     [candidates, sameDiameterSourceId]
   );
   const activeSeam = seams.find((seam) => seam.id === activeSeamId) ?? null;
-  const poses = activeSeam ? sampleTorchPoses(activeSeam, poseDefinition) : [];
+  const activePoseDefinition = activeSeam?.poseDefinition ?? poseDefinition;
+  const poses = activeSeam ? sampleTorchPoses(activeSeam, activePoseDefinition) : [];
   const transform = workpiece?.displayTransform ?? null;
   const modelUrl = workpiece && workpieceBaseUrl ? `${workpieceBaseUrl}/${workpiece.modelUrl}` : null;
 
@@ -153,6 +154,12 @@ function ImportedModel({ modelUrl, transform }: { modelUrl: string; transform: D
         mesh.material = material;
         mesh.castShadow = true;
         mesh.receiveShadow = true;
+        const edges = new THREE.LineSegments(
+          new THREE.EdgesGeometry(mesh.geometry, 35),
+          new THREE.LineBasicMaterial({ color: "#33444d", transparent: true, opacity: 0.26 })
+        );
+        edges.renderOrder = 2;
+        mesh.add(edges);
       }
     });
   }, [scene]);

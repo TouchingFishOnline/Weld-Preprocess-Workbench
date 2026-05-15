@@ -34,9 +34,13 @@ export interface WorkbenchState {
   seams: WeldSeam[];
   activeSeamId: string | null;
   poseDefinition: LaserPoseDefinition;
+  defaultPoseDefinition: LaserPoseDefinition;
   sameDiameterSourceId: string | null;
   loadWorkpieceManifest: (manifest: WorkpieceManifest, manifestUrl: string) => void;
   addStage: () => void;
+  deleteStage: (stageId: string) => void;
+  deleteSeam: (seamId: string) => void;
+  moveSeamInStage: (stageId: string, seamId: string, direction: -1 | 1) => void;
   toggleViewLocked: () => void;
   setTargetShape: (targetShape: TargetShape) => void;
   setCandidateKindFilter: (candidateKind: string | null) => void;
@@ -48,6 +52,8 @@ export interface WorkbenchState {
   confirmSelectionAsSeam: () => void;
   setActiveSeam: (seamId: string | null) => void;
   updatePoseDefinition: (patch: Partial<LaserPoseDefinition>) => void;
+  saveCurrentPoseAsDefault: () => void;
+  applyDefaultPoseToActiveSeam: () => void;
   setSameDiameterSource: (candidateId: string | null) => void;
   exportProject: () => WorkbenchProjectFile | null;
   importProject: (project: unknown) => WorkbenchProjectImportResult;
@@ -85,6 +91,7 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
   seams: [],
   activeSeamId: null,
   poseDefinition: initialPose,
+  defaultPoseDefinition: initialPose,
   sameDiameterSourceId: null,
   loadWorkpieceManifest: (manifest, manifestUrl) => {
     const baseUrl = manifestUrl.slice(0, manifestUrl.lastIndexOf("/"));
@@ -100,12 +107,15 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
       activeStageId: null,
       seams: [],
       activeSeamId: null,
+      poseDefinition: clonePose(initialPose),
+      defaultPoseDefinition: clonePose(initialPose),
       sameDiameterSourceId: null
     });
   },
   addStage: () =>
     set((state) => {
-      const stageIndex = state.stages.length + 1;
+      const stageIndex =
+        Math.max(0, ...state.stages.map((stage) => Number(stage.id.replace("stage-", ""))).filter(Number.isFinite)) + 1;
       const stage: WeldStage = {
         id: `stage-${String(stageIndex).padStart(2, "0")}`,
         name: `阶段 ${stageIndex}`,
@@ -120,6 +130,44 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
         sameDiameterSourceId: null
       };
     }),
+  deleteStage: (stageId) =>
+    set((state) => {
+      const stage = state.stages.find((item) => item.id === stageId);
+      if (!stage) {
+        return {};
+      }
+      const removedSeamIds = new Set(stage.seamIds);
+      const stages = state.stages.filter((item) => item.id !== stageId);
+      const seams = state.seams.filter((seam) => !removedSeamIds.has(seam.id));
+      const activeStageId = state.activeStageId === stageId ? (stages[0]?.id ?? null) : state.activeStageId;
+      const activeSeamId =
+        state.activeSeamId && removedSeamIds.has(state.activeSeamId) ? null : state.activeSeamId;
+      return { stages, seams, activeStageId, activeSeamId, selectedCandidateIds: [], sameDiameterSourceId: null };
+    }),
+  deleteSeam: (seamId) =>
+    set((state) => ({
+      seams: state.seams.filter((seam) => seam.id !== seamId),
+      stages: state.stages.map((stage) => ({ ...stage, seamIds: stage.seamIds.filter((id) => id !== seamId) })),
+      activeSeamId: state.activeSeamId === seamId ? null : state.activeSeamId,
+      selectedCandidateIds: [],
+      sameDiameterSourceId: null
+    })),
+  moveSeamInStage: (stageId, seamId, direction) =>
+    set((state) => ({
+      stages: state.stages.map((stage) => {
+        if (stage.id !== stageId) {
+          return stage;
+        }
+        const seamIds = [...stage.seamIds];
+        const index = seamIds.indexOf(seamId);
+        const nextIndex = index + direction;
+        if (index < 0 || nextIndex < 0 || nextIndex >= seamIds.length) {
+          return stage;
+        }
+        [seamIds[index], seamIds[nextIndex]] = [seamIds[nextIndex], seamIds[index]];
+        return { ...stage, seamIds };
+      })
+    })),
   toggleViewLocked: () => set((state) => ({ viewLocked: !state.viewLocked })),
   setTargetShape: (targetShape) =>
     set({
@@ -165,10 +213,13 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
       return;
     }
 
-    const seamId = `seam-${String(state.seams.length + 1).padStart(2, "0")}`;
+    const seamIndex =
+      Math.max(0, ...state.seams.map((seam) => Number(seam.id.replace("seam-", ""))).filter(Number.isFinite)) + 1;
+    const seamId = `seam-${String(seamIndex).padStart(2, "0")}`;
     const seam = {
       ...buildSeamFromCandidates(seamId, selectedCandidates),
-      label: `S${state.seams.length + 1}`
+      label: `S${seamIndex}`,
+      poseDefinition: clonePose(state.defaultPoseDefinition)
     };
 
     set({
@@ -181,11 +232,41 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
       sameDiameterSourceId: null
     });
   },
-  setActiveSeam: (seamId) => set({ activeSeamId: seamId }),
+  setActiveSeam: (seamId) =>
+    set((state) => {
+      const seam = seamId ? state.seams.find((item) => item.id === seamId) : null;
+      return {
+        activeSeamId: seamId,
+        poseDefinition: clonePose(seam?.poseDefinition ?? state.defaultPoseDefinition)
+      };
+    }),
   updatePoseDefinition: (patch) =>
     set((state) => ({
-      poseDefinition: { ...state.poseDefinition, ...patch }
+      poseDefinition: { ...state.poseDefinition, ...patch },
+      seams: state.activeSeamId
+        ? state.seams.map((seam) =>
+            seam.id === state.activeSeamId
+              ? { ...seam, poseDefinition: { ...(seam.poseDefinition ?? state.defaultPoseDefinition), ...patch } }
+              : seam
+          )
+        : state.seams
     })),
+  saveCurrentPoseAsDefault: () =>
+    set((state) => ({
+      defaultPoseDefinition: clonePose(state.poseDefinition)
+    })),
+  applyDefaultPoseToActiveSeam: () =>
+    set((state) => {
+      if (!state.activeSeamId) {
+        return { poseDefinition: clonePose(state.defaultPoseDefinition) };
+      }
+      return {
+        poseDefinition: clonePose(state.defaultPoseDefinition),
+        seams: state.seams.map((seam) =>
+          seam.id === state.activeSeamId ? { ...seam, poseDefinition: clonePose(state.defaultPoseDefinition) } : seam
+        )
+      };
+    }),
   setSameDiameterSource: (candidateId) => set({ sameDiameterSourceId: candidateId }),
   exportProject: () => {
     const state = get();
@@ -200,7 +281,8 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
       activeStageId: state.activeStageId,
       seams: state.seams,
       activeSeamId: state.activeSeamId,
-      poseDefinition: state.poseDefinition
+      poseDefinition: state.poseDefinition,
+      defaultPoseDefinition: state.defaultPoseDefinition
     });
   },
   importProject: (project) => {
@@ -232,3 +314,7 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
 });
 
 export const useWorkbenchStore = create<WorkbenchState>()(createWorkbenchSlice);
+
+function clonePose(pose: LaserPoseDefinition): LaserPoseDefinition {
+  return JSON.parse(JSON.stringify(pose)) as LaserPoseDefinition;
+}

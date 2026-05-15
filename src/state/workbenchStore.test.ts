@@ -109,6 +109,68 @@ describe("workbench store", () => {
     expect(store.getState().activeStageId).toBe("stage-02");
   });
 
+  it("deletes a stage and its assigned seams", () => {
+    const store = createWorkbenchStore();
+    store.getState().loadWorkpieceManifest(manifest, "/workpieces/wp/manifest.json");
+    store.getState().addStage();
+    store.getState().toggleCandidate("edge_1");
+    store.getState().confirmSelectionAsSeam();
+
+    store.getState().deleteStage("stage-01");
+
+    expect(store.getState().stages).toEqual([]);
+    expect(store.getState().seams).toEqual([]);
+    expect(store.getState().activeStageId).toBeNull();
+    expect(store.getState().activeSeamId).toBeNull();
+  });
+
+  it("deletes a seam from the active stage", () => {
+    const store = createWorkbenchStore();
+    store.getState().loadWorkpieceManifest(manifest, "/workpieces/wp/manifest.json");
+    store.getState().addStage();
+    store.getState().toggleCandidate("edge_1");
+    store.getState().confirmSelectionAsSeam();
+
+    store.getState().deleteSeam("seam-01");
+
+    expect(store.getState().seams).toEqual([]);
+    expect(store.getState().stages[0].seamIds).toEqual([]);
+    expect(store.getState().activeSeamId).toBeNull();
+  });
+
+  it("moves seams within a stage order", () => {
+    const store = createWorkbenchStore();
+    store.getState().loadWorkpieceManifest(manifest, "/workpieces/wp/manifest.json");
+    store.getState().addStage();
+    store.getState().toggleCandidate("edge_1");
+    store.getState().confirmSelectionAsSeam();
+    store.getState().toggleCandidate("edge_1");
+    store.getState().confirmSelectionAsSeam();
+
+    store.getState().moveSeamInStage("stage-01", "seam-02", -1);
+
+    expect(store.getState().stages[0].seamIds).toEqual(["seam-02", "seam-01"]);
+  });
+
+  it("saves and applies default laser pose definitions", () => {
+    const store = createWorkbenchStore();
+    store.getState().loadWorkpieceManifest(manifest, "/workpieces/wp/manifest.json");
+    store.getState().updatePoseDefinition({ workAngleDeg: 62, travelAngleDeg: -12 });
+    store.getState().saveCurrentPoseAsDefault();
+    store.getState().addStage();
+    store.getState().toggleCandidate("edge_1");
+    store.getState().confirmSelectionAsSeam();
+
+    expect(store.getState().defaultPoseDefinition.workAngleDeg).toBe(62);
+    expect(store.getState().seams[0].poseDefinition?.workAngleDeg).toBe(62);
+
+    store.getState().updatePoseDefinition({ workAngleDeg: 15 });
+    expect(store.getState().seams[0].poseDefinition?.workAngleDeg).toBe(15);
+
+    store.getState().applyDefaultPoseToActiveSeam();
+    expect(store.getState().seams[0].poseDefinition?.workAngleDeg).toBe(62);
+  });
+
   it("loads candidates from a workpiece manifest", () => {
     const store = createWorkbenchStore();
 

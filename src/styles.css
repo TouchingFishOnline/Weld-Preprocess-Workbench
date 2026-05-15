@@ -521,6 +521,27 @@ h1 {
   margin-left: auto;
 }
 
+.row-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid #d3dce5;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #475569;
+}
+
+.row-icon-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.row-icon-button.danger {
+  color: #b91c1c;
+}
+
 .stage-dot {
   width: 10px;
   height: 10px;
@@ -577,4 +598,27 @@ h1 {
 .field strong {
   color: #0f172a;
   font-variant-numeric: tabular-nums;
+}
+
+.pose-field em {
+  color: #64748b;
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.pose-number {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pose-number input {
+  width: 92px;
+  min-height: 30px;
+  border: 1px solid #d3dce5;
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: #0f172a;
+  font-weight: 700;
 }
