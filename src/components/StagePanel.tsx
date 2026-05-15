@@ -1,4 +1,5 @@
-import { ArrowDown, ArrowDownUp, ArrowUp, Layers3, Plus, Trash2 } from "lucide-react";
+import { ArrowDownUp, GripVertical, Layers3, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { useWorkbenchStore } from "../state/workbenchStore";
 
 export function StagePanel() {
@@ -9,9 +10,11 @@ export function StagePanel() {
   const addStage = useWorkbenchStore((state) => state.addStage);
   const deleteStage = useWorkbenchStore((state) => state.deleteStage);
   const deleteSeam = useWorkbenchStore((state) => state.deleteSeam);
-  const moveSeamInStage = useWorkbenchStore((state) => state.moveSeamInStage);
+  const reorderSeamInStage = useWorkbenchStore((state) => state.reorderSeamInStage);
   const setActiveStage = useWorkbenchStore((state) => state.setActiveStage);
   const setActiveSeam = useWorkbenchStore((state) => state.setActiveSeam);
+  const [draggingSeamId, setDraggingSeamId] = useState<string | null>(null);
+  const [dragOverSeamId, setDragOverSeamId] = useState<string | null>(null);
 
   const activeStage = stages.find((stage) => stage.id === activeStageId) ?? null;
   const stageSeams = activeStage
@@ -75,36 +78,58 @@ export function StagePanel() {
           stageSeams.map((seam, index) => (
             <div
               key={seam.id}
-              className={seam.id === activeSeamId ? "seam-row active" : "seam-row"}
+              className={[
+                "seam-row",
+                seam.id === activeSeamId ? "active" : "",
+                seam.id === draggingSeamId ? "dragging" : "",
+                seam.id === dragOverSeamId && seam.id !== draggingSeamId ? "drag-over" : ""
+              ]
+                .filter(Boolean)
+                .join(" ")}
               onClick={() => setActiveSeam(seam.id)}
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                setDragOverSeamId(seam.id);
+              }}
+              onDragLeave={() => {
+                if (dragOverSeamId === seam.id) {
+                  setDragOverSeamId(null);
+                }
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                const movedSeamId = event.dataTransfer.getData("text/plain") || draggingSeamId;
+                setDraggingSeamId(null);
+                setDragOverSeamId(null);
+                if (movedSeamId && movedSeamId !== seam.id) {
+                  reorderSeamInStage(activeStage.id, movedSeamId, index);
+                  setActiveSeam(movedSeamId);
+                }
+              }}
             >
+              <span
+                className="drag-handle"
+                draggable
+                title="拖动调整顺序"
+                onClick={(event) => event.stopPropagation()}
+                onDragStart={(event) => {
+                  event.stopPropagation();
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData("text/plain", seam.id);
+                  setDraggingSeamId(seam.id);
+                  setDragOverSeamId(null);
+                }}
+                onDragEnd={() => {
+                  setDraggingSeamId(null);
+                  setDragOverSeamId(null);
+                }}
+              >
+                <GripVertical size={15} />
+              </span>
               <span>{String(index + 1).padStart(2, "0")}</span>
               <strong>{seam.label}</strong>
               <em>{seam.segments.length} 段</em>
-              <button
-                className="row-icon-button"
-                type="button"
-                title="上移"
-                disabled={index === 0}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  moveSeamInStage(activeStage.id, seam.id, -1);
-                }}
-              >
-                <ArrowUp size={14} />
-              </button>
-              <button
-                className="row-icon-button"
-                type="button"
-                title="下移"
-                disabled={index === stageSeams.length - 1}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  moveSeamInStage(activeStage.id, seam.id, 1);
-                }}
-              >
-                <ArrowDown size={14} />
-              </button>
               <button
                 className="row-icon-button danger"
                 type="button"

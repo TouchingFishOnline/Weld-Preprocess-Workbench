@@ -41,6 +41,7 @@ export interface WorkbenchState {
   deleteStage: (stageId: string) => void;
   deleteSeam: (seamId: string) => void;
   moveSeamInStage: (stageId: string, seamId: string, direction: -1 | 1) => void;
+  reorderSeamInStage: (stageId: string, seamId: string, targetIndex: number) => void;
   toggleViewLocked: () => void;
   setTargetShape: (targetShape: TargetShape) => void;
   setCandidateKindFilter: (candidateKind: string | null) => void;
@@ -165,6 +166,23 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
           return stage;
         }
         [seamIds[index], seamIds[nextIndex]] = [seamIds[nextIndex], seamIds[index]];
+        return { ...stage, seamIds };
+      })
+    })),
+  reorderSeamInStage: (stageId, seamId, targetIndex) =>
+    set((state) => ({
+      stages: state.stages.map((stage) => {
+        if (stage.id !== stageId) {
+          return stage;
+        }
+        const currentIndex = stage.seamIds.indexOf(seamId);
+        if (currentIndex < 0) {
+          return stage;
+        }
+        const seamIds = [...stage.seamIds];
+        const [movedSeamId] = seamIds.splice(currentIndex, 1);
+        const boundedIndex = Math.max(0, Math.min(targetIndex, seamIds.length));
+        seamIds.splice(boundedIndex, 0, movedSeamId);
         return { ...stage, seamIds };
       })
     })),

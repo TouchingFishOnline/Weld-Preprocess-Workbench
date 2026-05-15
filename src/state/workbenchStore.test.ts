@@ -152,6 +152,22 @@ describe("workbench store", () => {
     expect(store.getState().stages[0].seamIds).toEqual(["seam-02", "seam-01"]);
   });
 
+  it("reorders seams to an explicit stage position", () => {
+    const store = createWorkbenchStore();
+    store.getState().loadWorkpieceManifest(manifest, "/workpieces/wp/manifest.json");
+    store.getState().addStage();
+    store.getState().toggleCandidate("edge_1");
+    store.getState().confirmSelectionAsSeam();
+    store.getState().toggleCandidate("edge_1");
+    store.getState().confirmSelectionAsSeam();
+    store.getState().toggleCandidate("edge_1");
+    store.getState().confirmSelectionAsSeam();
+
+    store.getState().reorderSeamInStage("stage-01", "seam-03", 0);
+
+    expect(store.getState().stages[0].seamIds).toEqual(["seam-03", "seam-01", "seam-02"]);
+  });
+
   it("saves and applies default laser pose definitions", () => {
     const store = createWorkbenchStore();
     store.getState().loadWorkpieceManifest(manifest, "/workpieces/wp/manifest.json");

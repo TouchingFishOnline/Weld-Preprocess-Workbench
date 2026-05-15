@@ -516,6 +516,21 @@ h1 {
   justify-content: flex-start;
 }
 
+.seam-row {
+  transition: border-color 0.12s ease, background 0.12s ease, opacity 0.12s ease, transform 0.12s ease;
+}
+
+.seam-row.dragging {
+  opacity: 0.46;
+  transform: scale(0.99);
+}
+
+.seam-row.drag-over {
+  border-color: #f97316;
+  background: #fff7ed;
+  box-shadow: inset 3px 0 0 #f97316;
+}
+
 .stage-row strong,
 .seam-row em {
   margin-left: auto;
@@ -540,6 +555,27 @@ h1 {
 
 .row-icon-button.danger {
   color: #b91c1c;
+}
+
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 24px;
+  margin-left: -3px;
+  border-radius: 5px;
+  color: #64748b;
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-handle:hover {
+  background: #eef4f8;
+  color: #1f2937;
 }
 
 .stage-dot {
