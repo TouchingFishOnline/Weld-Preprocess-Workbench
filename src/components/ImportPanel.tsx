@@ -1,4 +1,4 @@
-import { Download, FileInput, FileUp, Loader2, Play } from "lucide-react";
+import { AlertTriangle, Download, FileInput, FileUp, Loader2, Play } from "lucide-react";
 import { useRef, useState } from "react";
 import { DEMO_MANIFEST_URL, fetchWorkpieceManifest, uploadStepFile } from "../domain/workpieceLoader";
 import { useWorkbenchStore } from "../state/workbenchStore";
@@ -10,9 +10,11 @@ export function ImportPanel() {
   const exportProject = useWorkbenchStore((state) => state.exportProject);
   const importProject = useWorkbenchStore((state) => state.importProject);
   const workpiece = useWorkbenchStore((state) => state.workpiece);
+  const importWarning = useWorkbenchStore((state) => state.importWarning);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [preprocessOnUpload, setPreprocessOnUpload] = useState(false);
+  const [ignoreHashMismatch, setIgnoreHashMismatch] = useState(false);
   const semanticCandidateCount = workpiece?.seamCandidates?.length ?? 0;
 
   async function loadDemo() {
@@ -75,8 +77,14 @@ export function ImportPanel() {
     setMessage("正在导入标注文件...");
     try {
       const project = JSON.parse(await file.text()) as unknown;
-      const result = importProject(project);
-      setMessage(result.ok ? "标注文件已导入。" : result.message);
+      const result = importProject(project, { ignoreHashMismatch });
+      if (result.ok) {
+        setMessage(
+          result.warning ? "已强制导入标注：STEP 哈希不一致，请目视确认焊缝位置。" : "标注文件已导入。"
+        );
+      } else {
+        setMessage(result.message);
+      }
     } catch {
       setMessage("标注文件格式不正确。");
     } finally {
@@ -117,6 +125,12 @@ export function ImportPanel() {
         {semanticCandidateCount > 0 && (
           <span className="semantic-candidate-badge">已启用语义焊缝候选：{semanticCandidateCount} 条</span>
         )}
+        {importWarning && (
+          <span className="import-warning-badge">
+            <AlertTriangle size={13} />
+            强制导入：当前 STEP 与标注源 hash 不一致
+          </span>
+        )}
       </div>
       <button
         type="button"
@@ -135,6 +149,25 @@ export function ImportPanel() {
           tabIndex={-1}
         />
         <span>生成语义候选</span>
+      </button>
+      <button
+        type="button"
+        className="preprocess-toggle warning-toggle"
+        aria-pressed={ignoreHashMismatch}
+        disabled={busy || !workpiece}
+        title="仅当确认是同一工件的兼容版本时使用。导入后请目视确认焊缝位置。"
+        onClick={() => {
+          setIgnoreHashMismatch((current) => !current);
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={ignoreHashMismatch}
+          disabled={busy || !workpiece}
+          readOnly
+          tabIndex={-1}
+        />
+        <span>忽略哈希校验</span>
       </button>
       <button type="button" className="secondary-action" disabled={busy} onClick={() => stepInputRef.current?.click()}>
         {busy ? <Loader2 size={16} className="spin" /> : <FileUp size={16} />}

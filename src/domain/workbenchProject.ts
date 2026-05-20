@@ -8,6 +8,7 @@ export interface WorkbenchProjectFile {
   kind: typeof WORKBENCH_PROJECT_KIND;
   version: number;
   exportedAt: string;
+  importWarning?: WorkbenchImportWarning;
   workpiece: {
     id: string;
     sourceFile: string;
@@ -25,8 +26,21 @@ export interface WorkbenchProjectFile {
   };
 }
 
+export interface WorkbenchImportWarning {
+  reason: "hash-mismatch-override";
+  importedAt: string;
+  projectSourceFile: string;
+  projectSourceHash: string;
+  currentSourceFile: string;
+  currentSourceHash: string;
+}
+
+export interface WorkbenchProjectImportOptions {
+  ignoreHashMismatch?: boolean;
+}
+
 export type WorkbenchProjectImportResult =
-  | { ok: true }
+  | { ok: true; warning?: WorkbenchImportWarning }
   | {
       ok: false;
       reason: "no-workpiece" | "invalid-project" | "unsupported-version" | "hash-mismatch";
@@ -42,6 +56,7 @@ interface WorkbenchProjectSource {
   activeSeamId: string | null;
   poseDefinition: LaserPoseDefinition;
   defaultPoseDefinition: LaserPoseDefinition;
+  importWarning?: WorkbenchImportWarning | null;
 }
 
 export function createWorkbenchProject(source: WorkbenchProjectSource): WorkbenchProjectFile {
@@ -49,6 +64,7 @@ export function createWorkbenchProject(source: WorkbenchProjectSource): Workbenc
     kind: WORKBENCH_PROJECT_KIND,
     version: WORKBENCH_PROJECT_VERSION,
     exportedAt: new Date().toISOString(),
+    ...(source.importWarning ? { importWarning: cloneJson(source.importWarning) } : {}),
     workpiece: {
       id: source.manifest.id,
       sourceFile: source.manifest.sourceFile,
@@ -69,7 +85,8 @@ export function createWorkbenchProject(source: WorkbenchProjectSource): Workbenc
 
 export function validateWorkbenchProject(
   project: unknown,
-  manifest: WorkpieceManifest | null
+  manifest: WorkpieceManifest | null,
+  options: WorkbenchProjectImportOptions = {}
 ): WorkbenchProjectImportResult {
   if (!manifest) {
     return {
@@ -96,10 +113,17 @@ export function validateWorkbenchProject(
   }
 
   if (project.workpiece.sourceHash !== manifest.sourceHash) {
+    if (options.ignoreHashMismatch) {
+      return {
+        ok: true,
+        warning: createHashMismatchWarning(project, manifest)
+      };
+    }
+
     return {
       ok: false,
       reason: "hash-mismatch",
-      message: "标注文件不属于当前 STEP，请先加载对应 STEP。"
+      message: `标注文件不属于当前 STEP。当前 STEP: ${manifest.sourceFile} / ${manifest.sourceHash}；标注文件: ${project.workpiece.sourceFile} / ${project.workpiece.sourceHash}。`
     };
   }
 
@@ -150,4 +174,18 @@ export function isWorkbenchProjectFile(project: unknown): project is WorkbenchPr
 
 function cloneJson<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function createHashMismatchWarning(
+  project: WorkbenchProjectFile,
+  manifest: WorkpieceManifest
+): WorkbenchImportWarning {
+  return {
+    reason: "hash-mismatch-override",
+    importedAt: new Date().toISOString(),
+    projectSourceFile: project.workpiece.sourceFile,
+    projectSourceHash: project.workpiece.sourceHash,
+    currentSourceFile: manifest.sourceFile,
+    currentSourceHash: manifest.sourceHash
+  };
 }

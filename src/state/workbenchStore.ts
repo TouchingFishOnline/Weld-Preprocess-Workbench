@@ -16,7 +16,12 @@ import type {
   WeldStage
 } from "../domain/types";
 import type { StateCreator } from "zustand";
-import type { WorkbenchProjectFile, WorkbenchProjectImportResult } from "../domain/workbenchProject";
+import type {
+  WorkbenchImportWarning,
+  WorkbenchProjectFile,
+  WorkbenchProjectImportOptions,
+  WorkbenchProjectImportResult
+} from "../domain/workbenchProject";
 import type { WorkpieceManifest } from "../domain/workpieceTypes";
 
 export interface WorkbenchState {
@@ -35,6 +40,7 @@ export interface WorkbenchState {
   activeSeamId: string | null;
   poseDefinition: LaserPoseDefinition;
   defaultPoseDefinition: LaserPoseDefinition;
+  importWarning: WorkbenchImportWarning | null;
   sameDiameterSourceId: string | null;
   loadWorkpieceManifest: (manifest: WorkpieceManifest, manifestUrl: string) => void;
   addStage: () => void;
@@ -57,7 +63,7 @@ export interface WorkbenchState {
   applyDefaultPoseToActiveSeam: () => void;
   setSameDiameterSource: (candidateId: string | null) => void;
   exportProject: () => WorkbenchProjectFile | null;
-  importProject: (project: unknown) => WorkbenchProjectImportResult;
+  importProject: (project: unknown, options?: WorkbenchProjectImportOptions) => WorkbenchProjectImportResult;
 }
 
 const initialPose: LaserPoseDefinition = {
@@ -93,6 +99,7 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
   activeSeamId: null,
   poseDefinition: initialPose,
   defaultPoseDefinition: initialPose,
+  importWarning: null,
   sameDiameterSourceId: null,
   loadWorkpieceManifest: (manifest, manifestUrl) => {
     const baseUrl = manifestUrl.slice(0, manifestUrl.lastIndexOf("/"));
@@ -110,6 +117,7 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
       activeSeamId: null,
       poseDefinition: clonePose(initialPose),
       defaultPoseDefinition: clonePose(initialPose),
+      importWarning: null,
       sameDiameterSourceId: null
     });
   },
@@ -300,11 +308,12 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
       seams: state.seams,
       activeSeamId: state.activeSeamId,
       poseDefinition: state.poseDefinition,
-      defaultPoseDefinition: state.defaultPoseDefinition
+      defaultPoseDefinition: state.defaultPoseDefinition,
+      importWarning: state.importWarning
     });
   },
-  importProject: (project) => {
-    const validation = validateWorkbenchProject(project, get().workpiece);
+  importProject: (project, options) => {
+    const validation = validateWorkbenchProject(project, get().workpiece, options);
     if (!validation.ok) {
       return validation;
     }
@@ -324,10 +333,11 @@ const createWorkbenchSlice: StateCreator<WorkbenchState> = (set, get) => ({
       hoverCandidateId: null,
       candidateKindFilter: null,
       candidateGroupHighlighted: false,
+      importWarning: validation.warning ?? project.importWarning ?? null,
       sameDiameterSourceId: null
     });
 
-    return { ok: true };
+    return validation;
   }
 });
 

@@ -277,10 +277,50 @@ describe("workbench store", () => {
     expect(result).toEqual({
       ok: false,
       reason: "hash-mismatch",
-      message: "标注文件不属于当前 STEP，请先加载对应 STEP。"
+      message: "标注文件不属于当前 STEP。当前 STEP: other.step / different；标注文件: part.step / abc。"
     });
     expect(targetStore.getState().stages).toHaveLength(1);
     expect(targetStore.getState().seams).toEqual([]);
+  });
+
+  it("can force import annotations with a hash mismatch and preserve an audit warning", () => {
+    const sourceStore = createWorkbenchStore();
+    sourceStore.getState().loadWorkpieceManifest(manifest, "/workpieces/wp/manifest.json");
+    sourceStore.getState().addStage();
+    sourceStore.getState().toggleCandidate("edge_1");
+    sourceStore.getState().confirmSelectionAsSeam();
+    const project = sourceStore.getState().exportProject();
+
+    const otherManifest: WorkpieceManifest = {
+      ...manifest,
+      id: "other",
+      sourceFile: "other.step",
+      sourceHash: "different"
+    };
+    const targetStore = createWorkbenchStore();
+    targetStore.getState().loadWorkpieceManifest(otherManifest, "/workpieces/other/manifest.json");
+
+    const result = targetStore.getState().importProject(project, { ignoreHashMismatch: true });
+
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.warning : null).toMatchObject({
+      reason: "hash-mismatch-override",
+      projectSourceFile: "part.step",
+      projectSourceHash: "abc",
+      currentSourceFile: "other.step",
+      currentSourceHash: "different"
+    });
+    expect(targetStore.getState().seams).toHaveLength(1);
+    expect(targetStore.getState().importWarning).toMatchObject({
+      reason: "hash-mismatch-override",
+      projectSourceFile: "part.step",
+      currentSourceFile: "other.step"
+    });
+    expect(targetStore.getState().exportProject()?.importWarning).toMatchObject({
+      reason: "hash-mismatch-override",
+      projectSourceHash: "abc",
+      currentSourceHash: "different"
+    });
   });
 
   it("rejects unsupported annotation file versions", () => {

@@ -87,7 +87,7 @@ h1 {
 
 .import-strip {
   display: grid;
-  grid-template-columns: 1fr auto repeat(4, auto);
+  grid-template-columns: 1fr auto auto repeat(4, auto);
   align-items: center;
   gap: 12px;
   padding: 14px 24px;
@@ -124,6 +124,14 @@ h1 {
   font-weight: 700;
 }
 
+.import-strip .import-warning-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #b45309;
+  font-weight: 700;
+}
+
 .preprocess-toggle {
   display: inline-flex;
   align-items: center;
@@ -155,6 +163,12 @@ h1 {
   border-color: #0f766e;
   background: #e8f6f3;
   color: #0f513f;
+}
+
+.warning-toggle:has(input:checked) {
+  border-color: #f59e0b;
+  background: #fff7ed;
+  color: #9a3412;
 }
 
 .tool-panel,
